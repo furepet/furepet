@@ -1,21 +1,33 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { FileText, Image, Trash2, ExternalLink } from "lucide-react";
+import { FileText, Image, Trash2, FolderOpen } from "lucide-react";
 import { useMedicalDocuments, useDeleteMedicalDocument } from "@/hooks/useMedicalRecords";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 
 interface Props {
   petId: string;
+  onUpload?: () => void;
 }
 
-export const DocumentGallery = ({ petId }: Props) => {
+export const DocumentGallery = ({ petId, onUpload }: Props) => {
   const { data: docs = [] } = useMedicalDocuments(petId);
   const deleteMutation = useDeleteMedicalDocument();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; filePath: string } | null>(null);
 
-  if (docs.length === 0) return null;
+  if (docs.length === 0) {
+    return (
+      <EmptyState
+        icon={FolderOpen}
+        title="No documents uploaded"
+        description="Upload medical records, lab results, or vet notes for AI-powered extraction."
+        actionLabel="Upload Records"
+        onAction={onUpload}
+      />
+    );
+  }
 
   const viewDoc = async (filePath: string) => {
     const { data } = await supabase.storage.from("medical-documents").createSignedUrl(filePath, 3600);

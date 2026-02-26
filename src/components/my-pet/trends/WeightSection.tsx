@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Pet } from "@/hooks/usePets";
 import { usePetWeights } from "@/hooks/usePetWeights";
 import { WeightChart } from "./WeightChart";
@@ -19,7 +20,28 @@ export const WeightSection = ({ pet }: Props) => {
   const latestWeight = [...weights].sort((a, b) => b.recorded_date.localeCompare(a.recorded_date))[0];
 
   if (isLoading) {
-    return <div className="h-40 rounded-xl bg-muted animate-pulse" />;
+    return (
+      <div className="flex flex-col gap-3 animate-pulse">
+        <div className="h-6 w-24 rounded bg-muted" />
+        <div className="h-40 rounded-xl bg-muted" />
+        <div className="h-20 rounded-xl bg-muted" />
+      </div>
+    );
+  }
+
+  if (weights.length === 0) {
+    return (
+      <>
+        <EmptyState
+          icon={Scale}
+          title={`Start tracking ${pet.pet_name}'s weight`}
+          description="Monitor weight trends over time to keep your pet healthy."
+          actionLabel="Add First Entry"
+          onAction={() => setAddOpen(true)}
+        />
+        <AddWeightSheet open={addOpen} onOpenChange={setAddOpen} petId={pet.id} />
+      </>
+    );
   }
 
   return (
