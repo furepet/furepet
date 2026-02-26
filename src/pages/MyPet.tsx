@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PawPrint, TrendingUp, Lock } from "lucide-react";
 import { usePets } from "@/hooks/usePets";
 import { PetBasics } from "@/components/my-pet/PetBasics";
+import { PhysicalTrends } from "@/components/my-pet/PhysicalTrends";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
 
 type SubTab = "basics" | "trends";
@@ -63,12 +64,8 @@ const MyPet = () => {
       {/* Basics */}
       {activeTab === "basics" && activePet && <PetBasics pet={activePet} />}
 
-      {/* Physical Trends (premium only — won't reach here if locked) */}
-      {activeTab === "trends" && (
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground rounded-xl bg-card border border-border">
-          Weight chart coming soon
-        </div>
-      )}
+      {/* Physical Trends (premium only) */}
+      {activeTab === "trends" && activePet && <PhysicalTrends pet={activePet} />}
 
       <PremiumLockSheet open={lockSheetOpen} onOpenChange={setLockSheetOpen} />
     </div>
