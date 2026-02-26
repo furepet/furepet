@@ -50,15 +50,12 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { loading } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
-
-  const showSplash = !splashDone || loading;
 
   return (
     <>
-      {showSplash && <SplashScreen onFinish={() => setSplashDone(true)} />}
-      {!showSplash && (
+      {!splashDone && <SplashScreen onFinish={() => setSplashDone(true)} />}
+      <div style={{ display: splashDone ? undefined : "none" }}>
       <Routes>
         {/* Auth routes */}
         <Route path="/auth" element={<AuthRoute><Login /></AuthRoute>} />
@@ -84,7 +81,7 @@ const AppRoutes = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-      )}
+      </div>
     </>
   );
 };
