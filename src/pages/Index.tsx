@@ -77,18 +77,18 @@ const Index = () => {
 
       {/* Emergency CPR/First Aid Card */}
       <Card
-        className="cursor-pointer border-destructive bg-destructive hover:bg-destructive/90 transition-colors shadow-md"
+        className="cursor-pointer border-destructive/30 bg-emergency-bg hover:shadow-md transition-shadow"
         onClick={() => navigate("/more/first-aid")}
       >
         <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <Heart className="h-6 w-6 text-white" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <Heart className="h-6 w-6 text-destructive" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-white">CPR & First Aid</p>
-            <p className="text-xs text-white/80">Emergency guide — always free</p>
+            <p className="text-base font-semibold text-destructive">CPR & First Aid</p>
+            <p className="text-xs text-muted-foreground">Emergency guide — always free</p>
           </div>
-          <ChevronRight className="h-5 w-5 text-white/70" />
+          <ChevronRight className="h-5 w-5 text-destructive/60" />
         </CardContent>
       </Card>
     </div>
