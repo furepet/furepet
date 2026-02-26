@@ -12,11 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUpsertVillageMember, type VillageMember } from "@/hooks/useVillageMembers";
+import {
+  useUpsertVet, useUpsertWalker, useUpsertDaycare, useUpsertGroomer,
+  useUpsertEmergencyContact, useDeleteEmergencyContact,
+  useEmergencyContacts,
+  type Category,
+} from "@/hooks/useVillageMembers";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-type Category = "vet" | "walker" | "daycare" | "groomer" | "emergency";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   open: boolean;
@@ -24,7 +28,8 @@ interface Props {
   petId: string;
   petName: string;
   category: Category;
-  existing?: VillageMember;
+  existingId?: string;
+  existingData?: Record<string, any>;
 }
 
 const GROOMER_SERVICES = ["Bath", "Haircut", "Nail Trim", "Teeth Brushing", "De-shedding", "Ear Cleaning", "Other"];
@@ -39,7 +44,7 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             {date ? format(date, "PPP") : "Pick a date"}
           </Button>
         </PopoverTrigger>
@@ -51,25 +56,64 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   );
 }
 
-export const VillageEditSheet = ({ open, onOpenChange, petId, petName, category, existing }: Props) => {
-  const [details, setDetails] = useState<Record<string, any>>(existing?.details ?? {});
-  const upsert = useUpsertVillageMember();
+export const VillageEditSheet = ({ open, onOpenChange, petId, petName, category, existingId, existingData }: Props) => {
+  const [fields, setFields] = useState<Record<string, any>>(existingData ?? {});
+  const { user } = useAuth();
 
-  const set = (key: string, val: any) => setDetails((d) => ({ ...d, [key]: val }));
+  const upsertVet = useUpsertVet();
+  const upsertWalker = useUpsertWalker();
+  const upsertDaycare = useUpsertDaycare();
+  const upsertGroomer = useUpsertGroomer();
+  const upsertEmergency = useUpsertEmergencyContact();
 
-  const handleSave = () => {
-    upsert.mutate(
-      { id: existing?.id, pet_id: petId, category, details },
-      {
-        onSuccess: () => { toast.success("Saved"); onOpenChange(false); },
-        onError: () => toast.error("Failed to save"),
+  const set = (key: string, val: any) => setFields((d) => ({ ...d, [key]: val }));
+
+  const isPending = upsertVet.isPending || upsertWalker.isPending || upsertDaycare.isPending || upsertGroomer.isPending || upsertEmergency.isPending;
+
+  const handleSave = async () => {
+    const opts = {
+      onSuccess: () => { toast.success("Saved"); onOpenChange(false); },
+      onError: () => toast.error("Failed to save"),
+    };
+
+    // Strip out fields that shouldn't go to DB
+    const { id: _id, pet_id: _pid, user_id: _uid, created_at: _ca, updated_at: _ua, ...cleanFields } = fields;
+
+    switch (category) {
+      case "vet":
+        upsertVet.mutate({ id: existingId, pet_id: petId, data: cleanFields }, opts);
+        break;
+      case "walker":
+        upsertWalker.mutate({ id: existingId, pet_id: petId, data: cleanFields }, opts);
+        break;
+      case "daycare":
+        upsertDaycare.mutate({ id: existingId, pet_id: petId, data: cleanFields }, opts);
+        break;
+      case "groomer":
+        upsertGroomer.mutate({ id: existingId, pet_id: petId, data: cleanFields }, opts);
+        break;
+      case "emergency": {
+        // Emergency contacts are individual rows
+        const contacts = fields.contacts ?? [];
+        for (let i = 0; i < contacts.length; i++) {
+          const c = contacts[i];
+          if (!c.name && !c.phone) continue;
+          const { id: cId, pet_id: _p, user_id: _u, created_at: _c, updated_at: _uu, ...contactData } = c;
+          await upsertEmergency.mutateAsync({
+            id: c.id,
+            pet_id: petId,
+            data: { ...contactData, priority: i + 1 },
+          });
+        }
+        toast.success("Saved");
+        onOpenChange(false);
+        break;
       }
-    );
+    }
   };
 
-  // Reset details when existing changes
   const handleOpen = (isOpen: boolean) => {
-    if (isOpen) setDetails(existing?.details ?? {});
+    if (isOpen) setFields(existingData ?? {});
     onOpenChange(isOpen);
   };
 
@@ -78,21 +122,21 @@ export const VillageEditSheet = ({ open, onOpenChange, petId, petName, category,
       <SheetContent side="bottom" className="rounded-t-2xl h-[85vh]">
         <SheetHeader>
           <SheetTitle>
-            {existing ? "Edit" : "Add"} {getCategoryTitle(category)}
+            {existingId || (category === "emergency" && existingData) ? "Edit" : "Add"} {getCategoryTitle(category)}
           </SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-[calc(85vh-8rem)] pr-2">
           <div className="flex flex-col gap-4 pt-4 pb-4">
-            {category === "vet" && <VetFields details={details} set={set} />}
-            {category === "walker" && <WalkerFields details={details} set={set} petName={petName} />}
-            {category === "daycare" && <DaycareFields details={details} set={set} petName={petName} />}
-            {category === "groomer" && <GroomerFields details={details} set={set} />}
-            {category === "emergency" && <EmergencyFields details={details} set={set} />}
+            {category === "vet" && <VetFields fields={fields} set={set} />}
+            {category === "walker" && <WalkerFields fields={fields} set={set} petName={petName} />}
+            {category === "daycare" && <DaycareFields fields={fields} set={set} petName={petName} />}
+            {category === "groomer" && <GroomerFields fields={fields} set={set} />}
+            {category === "emergency" && <EmergencyFields fields={fields} set={set} />}
           </div>
         </ScrollArea>
         <div className="pt-2">
-          <Button onClick={handleSave} disabled={upsert.isPending} className="w-full">
-            {upsert.isPending ? "Saving…" : "Save"}
+          <Button onClick={handleSave} disabled={isPending} className="w-full">
+            {isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </SheetContent>
@@ -106,23 +150,23 @@ function getCategoryTitle(cat: Category) {
 }
 
 // ── VET ──
-function VetFields({ details, set }: { details: Record<string, any>; set: (k: string, v: any) => void }) {
-  const lastCheckup = details.last_checkup ? parseISO(details.last_checkup) : null;
+function VetFields({ fields, set }: { fields: Record<string, any>; set: (k: string, v: any) => void }) {
+  const lastCheckup = fields.last_checkup_date ? parseISO(fields.last_checkup_date) : null;
   const nextCheckup = lastCheckup ? addYears(lastCheckup, 1) : null;
   const daysUntil = nextCheckup ? differenceInDays(nextCheckup, new Date()) : null;
 
   return (
     <>
-      <Field label="Clinic Name" value={details.clinic_name} onChange={(v) => set("clinic_name", v)} />
-      <Field label="Veterinarian Name" value={details.vet_name} onChange={(v) => set("vet_name", v)} />
-      <Field label="Phone Number" value={details.phone} onChange={(v) => set("phone", v)} type="tel" />
-      <Field label="Email" value={details.email} onChange={(v) => set("email", v)} type="email" />
-      <Field label="Address" value={details.address} onChange={(v) => set("address", v)} />
+      <Field label="Clinic Name" value={fields.clinic_name} onChange={(v) => set("clinic_name", v)} />
+      <Field label="Veterinarian Name" value={fields.vet_name} onChange={(v) => set("vet_name", v)} />
+      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
+      <Field label="Address" value={fields.address} onChange={(v) => set("address", v)} />
       <div className="flex items-center justify-between">
         <Label>Annual Check-Up Reminder</Label>
-        <Switch checked={!!details.checkup_reminder} onCheckedChange={(v) => set("checkup_reminder", v)} />
+        <Switch checked={!!fields.checkup_reminder_enabled} onCheckedChange={(v) => set("checkup_reminder_enabled", v)} />
       </div>
-      <DateField label="Date of Last Check-Up" value={details.last_checkup ?? ""} onChange={(v) => set("last_checkup", v)} />
+      <DateField label="Date of Last Check-Up" value={fields.last_checkup_date ?? ""} onChange={(v) => set("last_checkup_date", v)} />
       {daysUntil !== null && (
         <p className="text-sm text-primary font-medium">
           Next check-up {daysUntil > 0 ? `in ${daysUntil} days` : daysUntil === 0 ? "is today!" : `was ${Math.abs(daysUntil)} days ago`}
@@ -133,30 +177,30 @@ function VetFields({ details, set }: { details: Record<string, any>; set: (k: st
 }
 
 // ── WALKER ──
-function WalkerFields({ details, set, petName }: { details: Record<string, any>; set: (k: string, v: any) => void; petName: string }) {
-  const started = details.started_on ? parseISO(details.started_on) : null;
+function WalkerFields({ fields, set, petName }: { fields: Record<string, any>; set: (k: string, v: any) => void; petName: string }) {
+  const started = fields.started_date ? parseISO(fields.started_date) : null;
   const months = started ? differenceInMonths(new Date(), started) : null;
 
   return (
     <>
-      <Field label="Walker Name" value={details.name} onChange={(v) => set("name", v)} />
-      <Field label="Phone Number" value={details.phone} onChange={(v) => set("phone", v)} type="tel" />
-      <Field label="Email" value={details.email} onChange={(v) => set("email", v)} type="email" />
-      <DateField label={`Started with ${petName} on`} value={details.started_on ?? ""} onChange={(v) => set("started_on", v)} />
+      <Field label="Walker Name" value={fields.name} onChange={(v) => set("name", v)} />
+      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
+      <DateField label={`Started with ${petName} on`} value={fields.started_date ?? ""} onChange={(v) => set("started_date", v)} />
       {months !== null && months > 0 && <p className="text-sm text-primary font-medium">Walking together for {months} month{months !== 1 ? "s" : ""}</p>}
       <div>
         <Label>Notes</Label>
-        <Textarea placeholder="Schedule, preferences..." value={details.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} />
+        <Textarea placeholder="Schedule, preferences..." value={fields.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} />
       </div>
     </>
   );
 }
 
 // ── DAYCARE ──
-function DaycareFields({ details, set, petName }: { details: Record<string, any>; set: (k: string, v: any) => void; petName: string }) {
-  const started = details.started_on ? parseISO(details.started_on) : null;
+function DaycareFields({ fields, set, petName }: { fields: Record<string, any>; set: (k: string, v: any) => void; petName: string }) {
+  const started = fields.started_date ? parseISO(fields.started_date) : null;
   const months = started ? differenceInMonths(new Date(), started) : null;
-  const friends: string[] = details.friends ?? [];
+  const friends: string[] = fields.friends ?? [];
   const [friendInput, setFriendInput] = useState("");
 
   const addFriend = () => {
@@ -169,13 +213,13 @@ function DaycareFields({ details, set, petName }: { details: Record<string, any>
 
   return (
     <>
-      <Field label="Facility Name" value={details.facility_name} onChange={(v) => set("facility_name", v)} />
-      <Field label="Phone Number" value={details.phone} onChange={(v) => set("phone", v)} type="tel" />
-      <Field label="Email" value={details.email} onChange={(v) => set("email", v)} type="email" />
-      <Field label="Address" value={details.address} onChange={(v) => set("address", v)} />
-      <DateField label="Started on" value={details.started_on ?? ""} onChange={(v) => set("started_on", v)} />
+      <Field label="Facility Name" value={fields.facility_name} onChange={(v) => set("facility_name", v)} />
+      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
+      <Field label="Address" value={fields.address} onChange={(v) => set("address", v)} />
+      <DateField label="Started on" value={fields.started_date ?? ""} onChange={(v) => set("started_date", v)} />
       {months !== null && months > 0 && <p className="text-sm text-primary font-medium">Attending for {months} month{months !== 1 ? "s" : ""}</p>}
-      <Field label="Favorite Caretaker" value={details.fav_caretaker} onChange={(v) => set("fav_caretaker", v)} />
+      <Field label="Favorite Caretaker" value={fields.favorite_caretaker} onChange={(v) => set("favorite_caretaker", v)} />
       <div>
         <Label>{petName}'s Friends at Daycare</Label>
         <div className="flex gap-2 mt-1">
@@ -187,7 +231,7 @@ function DaycareFields({ details, set, petName }: { details: Record<string, any>
             {friends.map((f) => (
               <span key={f} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                 {f}
-                <button onClick={() => set("friends", friends.filter((x) => x !== f))}><X className="h-3 w-3" /></button>
+                <button onClick={() => set("friends", friends.filter((x) => x !== f))} aria-label={`Remove ${f}`}><X className="h-3 w-3" /></button>
               </span>
             ))}
           </div>
@@ -195,17 +239,17 @@ function DaycareFields({ details, set, petName }: { details: Record<string, any>
       </div>
       <div>
         <Label>Notes</Label>
-        <Textarea placeholder="Schedule, special instructions..." value={details.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} />
+        <Textarea placeholder="Schedule, special instructions..." value={fields.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} />
       </div>
     </>
   );
 }
 
 // ── GROOMER ──
-function GroomerFields({ details, set }: { details: Record<string, any>; set: (k: string, v: any) => void }) {
-  const services: string[] = details.services ?? [];
-  const freq = details.frequency ?? "";
-  const lastAppt = details.last_appointment ? parseISO(details.last_appointment) : null;
+function GroomerFields({ fields, set }: { fields: Record<string, any>; set: (k: string, v: any) => void }) {
+  const services: string[] = fields.preferred_services ?? [];
+  const freq = fields.frequency ?? "";
+  const lastAppt = fields.last_appointment_date ? parseISO(fields.last_appointment_date) : null;
 
   const getNextAppointment = () => {
     if (!lastAppt || !freq) return null;
@@ -224,10 +268,10 @@ function GroomerFields({ details, set }: { details: Record<string, any>; set: (k
 
   return (
     <>
-      <Field label="Salon Name" value={details.salon_name} onChange={(v) => set("salon_name", v)} />
-      <Field label="Groomer Name" value={details.groomer_name} onChange={(v) => set("groomer_name", v)} />
-      <Field label="Phone Number" value={details.phone} onChange={(v) => set("phone", v)} type="tel" />
-      <Field label="Email" value={details.email} onChange={(v) => set("email", v)} type="email" />
+      <Field label="Salon Name" value={fields.salon_name} onChange={(v) => set("salon_name", v)} />
+      <Field label="Groomer Name" value={fields.groomer_name} onChange={(v) => set("groomer_name", v)} />
+      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
 
       <div>
         <Label>Preferred Services</Label>
@@ -237,16 +281,13 @@ function GroomerFields({ details, set }: { details: Record<string, any>; set: (k
               <Checkbox
                 checked={services.includes(s)}
                 onCheckedChange={(checked) => {
-                  set("services", checked ? [...services, s] : services.filter((x) => x !== s));
+                  set("preferred_services", checked ? [...services, s] : services.filter((x) => x !== s));
                 }}
               />
               {s}
             </label>
           ))}
         </div>
-        {services.includes("Other") && (
-          <Input className="mt-2" placeholder="Specify service" value={details.other_service ?? ""} onChange={(e) => set("other_service", e.target.value)} />
-        )}
       </div>
 
       <div>
@@ -257,29 +298,31 @@ function GroomerFields({ details, set }: { details: Record<string, any>; set: (k
             {GROOMER_FREQUENCIES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
           </SelectContent>
         </Select>
-        {freq === "Custom" && (
-          <Input className="mt-2" placeholder="e.g. Every 5 weeks" value={details.custom_frequency ?? ""} onChange={(e) => set("custom_frequency", e.target.value)} />
-        )}
       </div>
 
       <div className="flex items-center justify-between">
         <Label>Re-book Reminder</Label>
-        <Switch checked={!!details.rebook_reminder} onCheckedChange={(v) => set("rebook_reminder", v)} />
+        <Switch checked={!!fields.rebook_reminder_enabled} onCheckedChange={(v) => set("rebook_reminder_enabled", v)} />
       </div>
 
-      <DateField label="Date of Last Appointment" value={details.last_appointment ?? ""} onChange={(v) => set("last_appointment", v)} />
+      <DateField label="Date of Last Appointment" value={fields.last_appointment_date ?? ""} onChange={(v) => set("last_appointment_date", v)} />
       {daysUntil !== null && (
         <p className="text-sm text-primary font-medium">
           Next appointment {daysUntil > 0 ? `in ${daysUntil} days` : daysUntil === 0 ? "is today!" : `was ${Math.abs(daysUntil)} days ago`}
         </p>
       )}
+
+      <div>
+        <Label>Notes</Label>
+        <Textarea placeholder="Grooming preferences..." value={fields.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} />
+      </div>
     </>
   );
 }
 
 // ── EMERGENCY ──
-function EmergencyFields({ details, set }: { details: Record<string, any>; set: (k: string, v: any) => void }) {
-  const contacts = details.contacts ?? [{}, {}, {}];
+function EmergencyFields({ fields, set }: { fields: Record<string, any>; set: (k: string, v: any) => void }) {
+  const contacts = fields.contacts ?? [{}, {}, {}];
   const updateContact = (idx: number, key: string, val: string) => {
     const updated = [...contacts];
     updated[idx] = { ...updated[idx], [key]: val };
