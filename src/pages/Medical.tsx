@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, Share2 } from "lucide-react";
 import { usePets } from "@/hooks/usePets";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
 import { DocumentUpload } from "@/components/medical/DocumentUpload";
 import { DocumentGallery } from "@/components/medical/DocumentGallery";
 import { MedicalSections } from "@/components/medical/MedicalSections";
+import { SharePetSheet } from "@/components/share/SharePetSheet";
 
 const Medical = () => {
   const { data: pets = [], isLoading } = usePets();
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const activePet = pets[0] ?? null;
   const isPremium = activePet?.is_premium ?? false;
@@ -49,11 +51,22 @@ const Medical = () => {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-semibold text-foreground">{activePet.pet_name}'s Medical</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-foreground">{activePet.pet_name}'s Medical</h2>
+        <button
+          onClick={() => setShareOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          aria-label="Share medical records"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+      </div>
 
       <DocumentUpload petId={activePet.id} petName={activePet.pet_name} />
       <DocumentGallery petId={activePet.id} />
       <MedicalSections petId={activePet.id} />
+
+      <SharePetSheet pet={activePet} open={shareOpen} onOpenChange={setShareOpen} />
     </div>
   );
 };

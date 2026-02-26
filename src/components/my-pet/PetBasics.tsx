@@ -1,9 +1,10 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { format, parseISO, differenceInYears, differenceInMonths } from "date-fns";
-import { Camera, PawPrint, Pencil, X, Heart } from "lucide-react";
+import { Camera, PawPrint, Pencil, X, Heart, Share2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MarkAsPassedDialog, RestoreProfileDialog } from "./MemorialDialogs";
+import { SharePetSheet } from "@/components/share/SharePetSheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -53,6 +54,7 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
   const canRestore = isDeceased && pet.deceased_at
     ? (Date.now() - new Date(pet.deceased_at).getTime()) / (1000 * 60 * 60 * 24) <= 30
     : false;
+  const [shareOpen, setShareOpen] = useState(false);
 
   // edit form state
   const [petName, setPetName] = useState(pet.pet_name);
@@ -223,15 +225,24 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
               )}
             </div>
           </div>
-          {!isDeceased && (
+          <div className="flex gap-1">
             <button
-              onClick={() => setEditing(true)}
+              onClick={() => setShareOpen(true)}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              aria-label="Edit pet details"
+              aria-label="Share pet info"
             >
-              <Pencil className="h-4 w-4" />
+              <Share2 className="h-4 w-4" />
             </button>
-          )}
+            {!isDeceased && (
+              <button
+                onClick={() => setEditing(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                aria-label="Edit pet details"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Detail card */}
@@ -273,6 +284,7 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
 
         <MarkAsPassedDialog pet={pet} open={passedDialogOpen} onOpenChange={setPassedDialogOpen} />
         <RestoreProfileDialog pet={pet} open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen} />
+        <SharePetSheet pet={pet} open={shareOpen} onOpenChange={setShareOpen} />
       </div>
     );
   }
