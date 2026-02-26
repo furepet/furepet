@@ -7,7 +7,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SplashScreen from "./components/SplashScreen";
 import AppShell from "./components/AppShell";
 import Index from "./pages/Index";
-import PlaceholderPage from "./components/PlaceholderPage";
+import MyPet from "./pages/MyPet";
+import Village from "./pages/Village";
+import Medical from "./pages/Medical";
+import More from "./pages/More";
+import FirstAid from "./pages/FirstAid";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,10 +29,11 @@ const App = () => {
           <Routes>
             <Route element={<AppShell />}>
               <Route path="/" element={<Index />} />
-              <Route path="/my-pet" element={<PlaceholderPage title="My Pet" />} />
-              <Route path="/village" element={<PlaceholderPage title="Village" />} />
-              <Route path="/medical" element={<PlaceholderPage title="Medical" />} />
-              <Route path="/more" element={<PlaceholderPage title="More" />} />
+              <Route path="/my-pet" element={<MyPet />} />
+              <Route path="/village" element={<Village />} />
+              <Route path="/medical" element={<Medical />} />
+              <Route path="/more" element={<More />} />
+              <Route path="/more/first-aid" element={<FirstAid />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
