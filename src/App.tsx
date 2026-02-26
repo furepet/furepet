@@ -13,6 +13,7 @@ import Village from "./pages/Village";
 import Medical from "./pages/Medical";
 import More from "./pages/More";
 import FirstAid from "./pages/FirstAid";
+import AiChat from "./pages/AiChat";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import SignUp from "./pages/auth/SignUp";
@@ -69,6 +70,7 @@ const AppRoutes = () => {
           <Route path="/medical" element={<Medical />} />
           <Route path="/more" element={<More />} />
           <Route path="/more/first-aid" element={<FirstAid />} />
+          <Route path="/more/ai-chat" element={<AiChat />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

@@ -11,7 +11,7 @@ const More = () => {
   const { signOut } = useAuth();
 
   const handlePremiumTap = () => {
-    // TODO: check subscription, show upgrade prompt for free users
+    navigate("/more/ai-chat");
   };
 
   const menuItems = [

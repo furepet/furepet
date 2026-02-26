@@ -159,7 +159,7 @@ const Index = () => {
           title="AI Pet Chat"
           subtitle="Ask anything about pet care"
           locked={!isPremium}
-          onClick={() => handleLockedTap("/more")}
+          onClick={() => handleLockedTap("/more/ai-chat")}
         />
 
         {/* Rainbow Bridge — only if deceased, locked if free */}
