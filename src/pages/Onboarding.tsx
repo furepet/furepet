@@ -117,7 +117,10 @@ const Onboarding = () => {
   };
 
   const savePet = async (isPremium: boolean) => {
-    if (!user) return;
+    if (!user) {
+      navigate("/", { replace: true });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -130,15 +133,17 @@ const Onboarding = () => {
           .from("pet-photos")
           .upload(path, photoFile, { contentType: photoFile.type });
 
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("pet-photos")
-          .getPublicUrl(path);
-        photoUrl = urlData.publicUrl;
+        if (uploadError) {
+          console.warn("Photo upload failed, continuing without photo:", uploadError.message);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from("pet-photos")
+            .getPublicUrl(path);
+          photoUrl = urlData.publicUrl;
+        }
       }
 
-      const { error } = await supabase.from("pets").insert({
+      const { error: petError } = await supabase.from("pets").insert({
         user_id: user.id,
         pet_name: petName.trim(),
         nickname: nickname.trim() || null,
@@ -156,7 +161,10 @@ const Onboarding = () => {
         is_premium: isPremium,
       });
 
-      if (error) throw error;
+      if (petError) {
+        console.error("Pet insert error:", petError.message);
+        throw petError;
+      }
 
       const { error: profileError } = await supabase
         .from("profiles")
@@ -166,13 +174,15 @@ const Onboarding = () => {
         })
         .eq("user_id", user.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Profile update error:", profileError.message);
+        // Pet was created successfully, so redirect anyway
+      }
 
-      // Use navigate only — no reload to avoid auth session lock conflicts
       navigate("/", { replace: true });
     } catch (err: any) {
-      toast({ title: "Error saving", description: err.message, variant: "destructive" });
-    } finally {
+      console.error("Onboarding save error:", err);
+      toast({ title: "Error saving", description: err.message || "Something went wrong", variant: "destructive" });
       setSaving(false);
     }
   };
