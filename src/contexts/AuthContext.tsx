@@ -21,32 +21,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
+    const fetchProfile = async (userId: string, userMeta?: Record<string, any>) => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name, onboarding_completed")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!mounted) return;
+      setFirstName(data?.first_name || userMeta?.first_name || "");
+      setOnboardingCompleted(data?.onboarding_completed ?? false);
+    };
+
+    // Initialize from getSession first to avoid blank screen
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (!mounted) return;
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      if (currentSession?.user) {
+        await fetchProfile(currentSession.user.id, currentSession.user.user_metadata);
+      }
+      if (mounted) setLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("first_name, onboarding_completed")
-            .eq("user_id", session.user.id)
-            .single();
-          setFirstName(data?.first_name || session.user.user_metadata?.first_name || "");
-          setOnboardingCompleted(data?.onboarding_completed ?? false);
+          await fetchProfile(session.user.id, session.user.user_metadata);
         } else {
           setFirstName("");
           setOnboardingCompleted(false);
         }
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
