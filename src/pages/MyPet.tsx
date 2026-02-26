@@ -1,17 +1,41 @@
 import { useState } from "react";
-import { PawPrint, TrendingUp, Heart } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PawPrint, TrendingUp, Lock } from "lucide-react";
+import { usePets } from "@/hooks/usePets";
+import { PetBasics } from "@/components/my-pet/PetBasics";
+import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
 
 type SubTab = "basics" | "trends";
 
 const MyPet = () => {
   const [activeTab, setActiveTab] = useState<SubTab>("basics");
-  const isDeceased = false; // TODO: from pet data
+  const { data: pets = [], isLoading } = usePets();
+  const [lockSheetOpen, setLockSheetOpen] = useState(false);
 
-  const tabs: { key: SubTab; label: string; icon: React.ElementType }[] = [
+  const activePet = pets[0] ?? null;
+  const isPremium = activePet?.is_premium ?? false;
+
+  const tabs: { key: SubTab; label: string; icon: React.ElementType; locked?: boolean }[] = [
     { key: "basics", label: "Basics", icon: PawPrint },
-    { key: "trends", label: "Physical Trends", icon: TrendingUp },
+    { key: "trends", label: "Physical Trends", icon: TrendingUp, locked: !isPremium },
   ];
+
+  const handleTabClick = (tab: SubTab, locked?: boolean) => {
+    if (locked) {
+      setLockSheetOpen(true);
+      return;
+    }
+    setActiveTab(tab);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-5 animate-pulse">
+        <div className="h-6 w-40 rounded bg-muted" />
+        <div className="h-10 w-64 rounded bg-muted" />
+        <div className="h-60 rounded-xl bg-muted" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -22,70 +46,31 @@ const MyPet = () => {
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabClick(tab.key, tab.locked)}
             className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key
+              activeTab === tab.key && !tab.locked
                 ? "bg-primary text-primary-foreground"
                 : "bg-card text-muted-foreground hover:text-foreground border border-border"
             }`}
           >
             <tab.icon className="h-4 w-4" />
             {tab.label}
+            {tab.locked && <Lock className="h-3 w-3 ml-1" />}
           </button>
         ))}
       </div>
 
       {/* Basics */}
-      {activeTab === "basics" && (
-        <div className="flex flex-col gap-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Pet Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                ["Name", "Buddy"],
-                ["Breed", "Golden Retriever"],
-                ["Date of Birth", "Jan 15, 2022"],
-                ["Microchip #", "—"],
-                ["Insurance", "—"],
-              ].map(([label, value]) => (
-                <div key={label} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-foreground">{value}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+      {activeTab === "basics" && activePet && <PetBasics pet={activePet} />}
+
+      {/* Physical Trends (premium only — won't reach here if locked) */}
+      {activeTab === "trends" && (
+        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground rounded-xl bg-card border border-border">
+          Weight chart coming soon
         </div>
       )}
 
-      {/* Physical Trends */}
-      {activeTab === "trends" && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Weight Tracking</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-              Weight chart coming soon
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Rainbow Bridge Memorial */}
-      {isDeceased && (
-        <Card className="border-muted">
-          <CardContent className="flex items-center gap-3 p-4">
-            <Heart className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Rainbow Bridge Memorial</p>
-              <p className="text-xs text-muted-foreground">In loving memory</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <PremiumLockSheet open={lockSheetOpen} onOpenChange={setLockSheetOpen} />
     </div>
   );
 };
