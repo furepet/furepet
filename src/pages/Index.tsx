@@ -10,6 +10,7 @@ import {
   Lock,
   Pencil,
   Cross,
+  Rainbow,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -95,23 +96,32 @@ const Index = () => {
 
       {/* Pet Profile Card */}
       {activePet && (
-        <Card className="overflow-hidden">
+        <Card className={`overflow-hidden ${activePet.is_deceased ? 'border-secondary/40' : ''}`}>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
               {activePet.photo_url ? (
                 <img
                   src={activePet.photo_url}
                   alt={activePet.pet_name}
-                  className="h-20 w-20 rounded-full object-cover"
+                  className={`h-20 w-20 rounded-full object-cover ${activePet.is_deceased ? 'opacity-80' : ''}`}
                 />
               ) : (
                 <PawPrint className="h-9 w-9 text-primary" />
               )}
+              {activePet.is_deceased && (
+                <div className="absolute -top-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary">
+                  <Rainbow className="h-3.5 w-3.5 text-secondary-foreground" />
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold text-foreground">{activePet.pet_name}</p>
+              <p className={`text-lg font-bold ${activePet.is_deceased ? 'text-muted-foreground' : 'text-foreground'}`}>
+                {activePet.pet_name}
+              </p>
               <p className="text-sm text-muted-foreground">
-                {[activePet.breed, age].filter(Boolean).join(" · ") || activePet.species}
+                {activePet.is_deceased
+                  ? "🌈 Forever in our hearts"
+                  : [activePet.breed, age].filter(Boolean).join(" · ") || activePet.species}
               </p>
             </div>
             <button
