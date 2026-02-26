@@ -9,7 +9,7 @@ const More = () => {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-semibold text-foreground">More</h2>
+      <h1 className="text-xl font-semibold text-foreground">More</h1>
 
       {/* AI Chat — Premium */}
       <Card

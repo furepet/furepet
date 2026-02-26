@@ -22,7 +22,7 @@ const BottomTabBar = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm" role="tablist" aria-label="Main navigation">
       <div className="mx-auto flex max-w-lg items-center justify-around">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path ||
@@ -31,8 +31,11 @@ const BottomTabBar = () => {
           return (
             <button
               key={tab.path}
+              role="tab"
+              aria-selected={isActive}
+              aria-label={tab.label}
               onClick={() => handleTap(tab.path)}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors min-h-[44px] min-w-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring rounded-md ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -40,6 +43,7 @@ const BottomTabBar = () => {
                 className={`h-5 w-5 transition-transform ${isBouncing ? "animate-tab-bounce" : ""}`}
                 strokeWidth={isActive ? 2.5 : 2}
                 fill={isActive ? "currentColor" : "none"}
+                aria-hidden="true"
               />
               <span>{tab.label}</span>
             </button>

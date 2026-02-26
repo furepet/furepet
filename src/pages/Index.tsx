@@ -107,7 +107,7 @@ const Index = () => {
               {activePet.photo_url ? (
                 <img
                   src={activePet.photo_url}
-                  alt={activePet.pet_name}
+                  alt={`Photo of ${activePet.pet_name}`}
                   className={`h-20 w-20 rounded-full object-cover ${activePet.is_deceased ? 'opacity-80' : ''}`}
                 />
               ) : (
@@ -131,8 +131,8 @@ const Index = () => {
             </div>
             <button
               onClick={() => navigate("/my-pet")}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              aria-label="Edit pet"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              aria-label={`Edit ${activePet.pet_name}`}
             >
               <Pencil className="h-4 w-4" />
             </button>
@@ -141,7 +141,7 @@ const Index = () => {
       )}
 
       {/* Section Cards */}
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* My Pet — always accessible */}
         <SectionCard
           icon={PawPrint}
@@ -183,22 +183,25 @@ const Index = () => {
 
       {/* Emergency CPR & First Aid */}
       <Card
-        className="cursor-pointer border-none shadow-lg mt-2 overflow-hidden"
+        className="cursor-pointer border-none shadow-lg mt-2 overflow-hidden bg-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:col-span-2"
         style={{
-          background: "hsl(0 84% 50%)",
           boxShadow: "0 4px 20px -4px hsl(0 84% 50% / 0.4)",
         }}
         onClick={() => navigate("/more/first-aid")}
+        tabIndex={0}
+        role="button"
+        aria-label="Emergency CPR and First Aid guide"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/more/first-aid"); } }}
       >
         <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <Cross className="h-6 w-6 text-white" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-destructive-foreground/20">
+            <Cross className="h-6 w-6 text-destructive-foreground" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-bold text-white">Emergency CPR & First Aid</p>
-            <p className="text-sm text-white/80">Know what to do in an emergency</p>
+            <p className="text-base font-bold text-destructive-foreground">Emergency CPR & First Aid</p>
+            <p className="text-sm text-destructive-foreground/80">Know what to do in an emergency</p>
           </div>
-          <ChevronRight className="h-5 w-5 text-white/70" />
+          <ChevronRight className="h-5 w-5 text-destructive-foreground/70" aria-hidden="true" />
         </CardContent>
       </Card>
 
@@ -219,15 +222,19 @@ interface SectionCardProps {
 
 const SectionCard = ({ icon: Icon, title, subtitle, locked, onClick }: SectionCardProps) => (
   <Card
-    className="cursor-pointer hover:shadow-md transition-shadow"
+    className="cursor-pointer hover:shadow-md transition-shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     onClick={onClick}
+    tabIndex={0}
+    role="button"
+    aria-label={`${title}${locked ? " (Premium)" : ""}`}
+    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
   >
-    <CardContent className="flex items-center gap-3 p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 relative">
-        <Icon className="h-5 w-5 text-primary" />
+    <CardContent className="flex items-center gap-3 p-4 min-h-[56px]">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 relative">
+        <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
         {locked && (
           <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-muted-foreground">
-            <Lock className="h-2.5 w-2.5 text-white" />
+            <Lock className="h-2.5 w-2.5 text-primary-foreground" aria-hidden="true" />
           </div>
         )}
       </div>
@@ -235,7 +242,7 @@ const SectionCard = ({ icon: Icon, title, subtitle, locked, onClick }: SectionCa
         <p className="text-sm font-semibold text-foreground">{title}</p>
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
     </CardContent>
   </Card>
 );
