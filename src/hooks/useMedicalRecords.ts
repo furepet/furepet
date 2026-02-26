@@ -64,6 +64,22 @@ export const useAddMedicalRecord = () => {
   });
 };
 
+export const useUpdateMedicalRecord = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (entry: { id: string; pet_id: string; title?: string; details?: Record<string, any>; record_date?: string | null }) => {
+      const update: any = {};
+      if (entry.title !== undefined) update.title = entry.title;
+      if (entry.details !== undefined) update.details = entry.details;
+      if (entry.record_date !== undefined) update.record_date = entry.record_date;
+      const { error } = await supabase.from("medical_records").update(update).eq("id", entry.id);
+      if (error) throw error;
+      return entry.pet_id;
+    },
+    onSuccess: (petId) => { qc.invalidateQueries({ queryKey: ["medical-records", petId] }); },
+  });
+};
+
 export const useDeleteMedicalRecord = () => {
   const qc = useQueryClient();
   return useMutation({
