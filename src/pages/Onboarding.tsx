@@ -25,10 +25,44 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const TOTAL_STEPS = 5;
+const SAVE_TIMEOUT_MS = 3000;
+
+const isAuthLockError = (error: unknown) => {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error ?? "");
+
+  return /lock was not released within 5000ms|lock was stolen by another request/i.test(message);
+};
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withLockRetry = async <T,>(operation: () => Promise<T>, maxRetries = 2): Promise<T> => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+
+      if (!isAuthLockError(error) || attempt === maxRetries) {
+        throw error;
+      }
+
+      await wait(200 * (attempt + 1));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Lock retry failed");
+};
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, completeOnboarding } = useAuth();
   const { toast } = useToast();
   const { subscribe } = usePushSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,67 +157,101 @@ const Onboarding = () => {
     }
 
     setSaving(true);
-    try {
-      let photoUrl: string | null = null;
 
-      if (photoFile) {
-        const ext = photoFile.name.split(".").pop();
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("pet-photos")
-          .upload(path, photoFile, { contentType: photoFile.type });
-
-        if (uploadError) {
-          console.warn("Photo upload failed, continuing without photo:", uploadError.message);
-        } else {
-          const { data: urlData } = supabase.storage
-            .from("pet-photos")
-            .getPublicUrl(path);
-          photoUrl = urlData.publicUrl;
-        }
-      }
-
-      const { error: petError } = await supabase.from("pets").insert({
-        user_id: user.id,
-        pet_name: petName.trim(),
-        nickname: nickname.trim() || null,
-        species,
-        photo_url: photoUrl,
-        date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
-        together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
-        breed: breed || null,
-        microchip_number: microchipNumber.trim() || null,
-        neuter_spay_status: neuterSpayStatus,
-        neuter_spay_date: neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
-        has_insurance: hasInsurance,
-        insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
-        policy_number: hasInsurance ? policyNumber.trim() || null : null,
-        is_premium: isPremium,
-      });
-
-      if (petError) {
-        console.error("Pet insert error:", petError.message);
-        throw petError;
-      }
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_completed: true,
-          subscription_status: isPremium ? "premium" : "free",
-        })
-        .eq("user_id", user.id);
-
-      if (profileError) {
-        console.error("Profile update error:", profileError.message);
-        // Pet was created successfully, so redirect anyway
-      }
-
+    const finishOnboardingAndGoHome = () => {
+      completeOnboarding();
       navigate("/", { replace: true });
+    };
+
+    let timeoutId: number | undefined;
+
+    try {
+      const saveOperation = async () => {
+        let photoUrl: string | null = null;
+
+        if (photoFile) {
+          const ext = photoFile.name.split(".").pop();
+          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await withLockRetry(() =>
+            supabase.storage.from("pet-photos").upload(path, photoFile, { contentType: photoFile.type })
+          );
+
+          if (uploadError) {
+            console.warn("Photo upload failed, continuing without photo:", uploadError.message);
+          } else {
+            const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
+            photoUrl = urlData.publicUrl;
+          }
+        }
+
+        const { error: petError } = await withLockRetry(async () =>
+          await supabase.from("pets").insert({
+            user_id: user.id,
+            pet_name: petName.trim(),
+            nickname: nickname.trim() || null,
+            species,
+            photo_url: photoUrl,
+            date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+            together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
+            breed: breed || null,
+            microchip_number: microchipNumber.trim() || null,
+            neuter_spay_status: neuterSpayStatus,
+            neuter_spay_date:
+              neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
+            has_insurance: hasInsurance,
+            insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
+            policy_number: hasInsurance ? policyNumber.trim() || null : null,
+            is_premium: isPremium,
+          })
+        );
+
+        if (petError) throw petError;
+
+        const { error: profileError } = await withLockRetry(async () =>
+          await supabase
+            .from("profiles")
+            .update({
+              onboarding_completed: true,
+              subscription_status: isPremium ? "premium" : "free",
+            })
+            .eq("user_id", user.id)
+        );
+
+        if (profileError) throw profileError;
+      };
+
+      await Promise.race([
+        saveOperation(),
+        new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error("ONBOARDING_SAVE_TIMEOUT")), SAVE_TIMEOUT_MS);
+        }),
+      ]);
+
+      finishOnboardingAndGoHome();
     } catch (err: any) {
+      const isTimeout = err?.message === "ONBOARDING_SAVE_TIMEOUT";
+
+      if (isTimeout || isAuthLockError(err)) {
+        console.warn("Onboarding save fallback:", err);
+        toast({
+          title: "Finishing setup in background",
+          description: "Taking you to your dashboard now.",
+        });
+        finishOnboardingAndGoHome();
+        return;
+      }
+
       console.error("Onboarding save error:", err);
-      toast({ title: "Error saving", description: err.message || "Something went wrong", variant: "destructive" });
+      toast({
+        title: "Error saving",
+        description: err?.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
       setSaving(false);
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
     }
   };
 
