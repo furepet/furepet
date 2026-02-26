@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { PawPrint, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePickerField } from "@/components/onboarding/DatePickerField";
+import { BreedCombobox } from "@/components/onboarding/BreedCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TOTAL_STEPS = 1;
+const TOTAL_STEPS = 2;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -24,47 +27,84 @@ const Onboarding = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [step, setStep] = useState(1);
   const [petName, setPetName] = useState("");
   const [nickname, setNickname] = useState("");
   const [species, setSpecies] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>();
+  const [togetherSince, setTogetherSince] = useState<Date | undefined>();
+  const [breed, setBreed] = useState("");
+  const [microchipNumber, setMicrochipNumber] = useState("");
+
   const [saving, setSaving] = useState(false);
 
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    return () => {
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
+
+  const handlePhotoSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toast({ title: "Invalid format", description: "Please upload a JPG or PNG image.", variant: "destructive" });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" });
+      toast({
+        title: "Invalid format",
+        description: "Please upload a JPG or PNG image.",
+        variant: "destructive",
+      });
       return;
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
     const img = new Image();
+
     img.onload = () => {
       if (img.width < 400 || img.height < 400) {
-        toast({ title: "Image too small", description: "Minimum dimensions are 400×400px.", variant: "destructive" });
+        URL.revokeObjectURL(nextPreviewUrl);
+        toast({
+          title: "Image too small",
+          description: "Minimum dimensions are 400×400px.",
+          variant: "destructive",
+        });
         return;
       }
+
       setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
+      setPhotoPreview((previousUrl) => {
+        if (previousUrl) URL.revokeObjectURL(previousUrl);
+        return nextPreviewUrl;
+      });
     };
-    img.src = URL.createObjectURL(file);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(nextPreviewUrl);
+      toast({
+        title: "Image error",
+        description: "Unable to load that image. Please try another one.",
+        variant: "destructive",
+      });
+    };
+
+    img.src = nextPreviewUrl;
   };
 
-  const handleNext = async () => {
-    if (!petName.trim()) {
-      toast({ title: "Pet name required", description: "Please enter your pet's name.", variant: "destructive" });
-      return;
-    }
-    if (!species) {
-      toast({ title: "Species required", description: "Please select your pet's species.", variant: "destructive" });
-      return;
-    }
+  const savePet = async () => {
     if (!user) return;
 
     setSaving(true);
@@ -77,6 +117,7 @@ const Onboarding = () => {
         const { error: uploadError } = await supabase.storage
           .from("pet-photos")
           .upload(path, photoFile, { contentType: photoFile.type });
+
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
@@ -91,17 +132,20 @@ const Onboarding = () => {
         nickname: nickname.trim() || null,
         species,
         photo_url: photoUrl,
+        date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+        together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
+        breed: breed || null,
+        microchip_number: microchipNumber.trim() || null,
       });
+
       if (error) throw error;
 
-      // Mark onboarding complete
       await supabase
         .from("profiles")
         .update({ onboarding_completed: true })
         .eq("user_id", user.id);
 
       navigate("/", { replace: true });
-      // Force a page reload so AuthContext re-evaluates
       window.location.reload();
     } catch (err: any) {
       toast({ title: "Error saving", description: err.message, variant: "destructive" });
@@ -110,108 +154,200 @@ const Onboarding = () => {
     }
   };
 
-  const progress = (1 / TOTAL_STEPS) * 100;
+  const handleNext = async () => {
+    if (step === 1) {
+      if (!petName.trim()) {
+        toast({
+          title: "Pet name required",
+          description: "Please enter your pet's name.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!species) {
+        toast({
+          title: "Species required",
+          description: "Please select your pet's species.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setStep(2);
+      return;
+    }
+
+    if (!breed) {
+      toast({
+        title: "Breed required",
+        description: "Please select your pet's breed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await savePet();
+  };
+
+  const progress = (step / TOTAL_STEPS) * 100;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Progress */}
       <div className="px-4 pt-6 pb-2 max-w-lg mx-auto w-full">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-muted-foreground">Step 1 of {TOTAL_STEPS}</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Step {step} of {TOTAL_STEPS}
+          </span>
         </div>
         <Progress value={progress} className="h-2" />
       </div>
 
-      {/* Content */}
       <div className="flex-1 px-4 pb-8 max-w-lg mx-auto w-full">
-        <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Let's meet your pet! 🐾</h1>
-        <p className="text-muted-foreground text-sm mb-8">Tell us about your furry friend.</p>
+        {step === 1 ? (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Let's meet your pet! 🐾</h1>
+            <p className="text-muted-foreground text-sm mb-8">Tell us about your furry friend.</p>
 
-        {/* Photo upload */}
-        <div className="flex flex-col items-center mb-8">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="relative w-32 h-32 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center overflow-hidden bg-muted hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {photoPreview ? (
-              <img src={photoPreview} alt="Pet preview" className="w-full h-full object-cover" />
-            ) : (
-              <PawPrint className="w-12 h-12 text-muted-foreground" />
-            )}
-            <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-1.5">
-              <Camera className="w-3.5 h-3.5" />
+            <div className="flex flex-col items-center mb-8">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="relative w-32 h-32 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center overflow-hidden bg-muted hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Pet preview" className="w-full h-full object-cover" />
+                ) : (
+                  <PawPrint className="w-12 h-12 text-muted-foreground" />
+                )}
+                <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-1.5">
+                  <Camera className="w-3.5 h-3.5" />
+                </div>
+              </button>
+
+              {photoPreview && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-2 text-xs text-primary font-medium hover:underline"
+                >
+                  Change Photo
+                </button>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
             </div>
-          </button>
-          {photoPreview && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-2 text-xs text-primary font-medium hover:underline"
-            >
-              Change Photo
-            </button>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png"
-            className="hidden"
-            onChange={handlePhotoSelect}
-          />
-        </div>
 
-        {/* Fields */}
-        <div className="space-y-5">
-          <div>
-            <Label htmlFor="petName">Pet's Full Name *</Label>
-            <Input
-              id="petName"
-              value={petName}
-              onChange={(e) => setPetName(e.target.value)}
-              placeholder="e.g. Buddy"
-              className="mt-1.5"
-            />
-          </div>
+            <div className="space-y-5">
+              <div>
+                <Label htmlFor="petName">Pet's Full Name *</Label>
+                <Input
+                  id="petName"
+                  value={petName}
+                  onChange={(e) => setPetName(e.target.value)}
+                  placeholder="e.g. Buddy"
+                  className="mt-1.5"
+                />
+              </div>
 
-          <div>
-            <Label htmlFor="nickname">Nickname(s)</Label>
-            <Input
-              id="nickname"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="e.g. Bud, Little Bear"
-              className="mt-1.5"
-            />
-          </div>
+              <div>
+                <Label htmlFor="nickname">Nickname(s)</Label>
+                <Input
+                  id="nickname"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="e.g. Bud, Little Bear"
+                  className="mt-1.5"
+                />
+              </div>
 
-          <div>
-            <Label>Species *</Label>
-            <Select value={species} onValueChange={setSpecies}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Select species" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Dog">Dog</SelectItem>
-                <SelectItem value="Cat">Cat</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+              <div>
+                <Label>Species *</Label>
+                <Select value={species} onValueChange={setSpecies}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select species" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dog">Dog</SelectItem>
+                    <SelectItem value="Cat">Cat</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">A few more details</h1>
+            <p className="text-muted-foreground text-sm mb-8">Help us complete your pet profile.</p>
+
+            <div className="space-y-5">
+              <DatePickerField
+                label="Date of Birth"
+                value={dateOfBirth}
+                onChange={setDateOfBirth}
+                placeholder="Pick a date"
+              />
+
+              <DatePickerField
+                label="When did your pet join your family?"
+                value={togetherSince}
+                onChange={setTogetherSince}
+                placeholder="Pick a date"
+              />
+
+              <BreedCombobox species={species} value={breed} onChange={setBreed} />
+
+              <div>
+                <Label htmlFor="microchipNumber">Microchip Number (optional)</Label>
+                <Input
+                  id="microchipNumber"
+                  value={microchipNumber}
+                  onChange={(e) => setMicrochipNumber(e.target.value)}
+                  placeholder="Enter microchip number"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Footer */}
       <div className="sticky bottom-0 bg-background border-t border-border p-4 max-w-lg mx-auto w-full">
-        <Button
-          onClick={handleNext}
-          disabled={saving}
-          className="w-full h-12 text-base font-semibold"
-        >
-          {saving ? "Saving…" : "Next"}
-        </Button>
+        {step === 1 ? (
+          <Button type="button" onClick={handleNext} className="w-full h-12 text-base font-semibold">
+            Next
+          </Button>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(1)}
+              disabled={saving}
+              className="h-12 text-base font-semibold"
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              onClick={handleNext}
+              disabled={saving}
+              className="h-12 text-base font-semibold"
+            >
+              {saving ? "Saving…" : "Next"}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default Onboarding;
+
