@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, parseISO, addDays, differenceInDays, isBefore } from "date-fns";
+import { format, parseISO, isBefore, differenceInDays } from "date-fns";
 import { Plus, Trash2, Syringe, ClipboardList, Pill, Activity, Brain, AlertTriangle, Eye, ChevronRight, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -16,12 +16,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMedicalRecords, useAddMedicalRecord, useUpdateMedicalRecord, useDeleteMedicalRecord, type MedicalRecord } from "@/hooks/useMedicalRecords";
+import {
+  useVaccines, useDiagnoses, useMedications, useSurgeries,
+  useBehavioralIssues, useAllergies, useObservations,
+  useAddMedicalRecord, useUpdateMedicalRecord, useDeleteMedicalRecord,
+  type MedicalCategory, type Vaccine, type Diagnosis, type Medication,
+  type Surgery, type BehavioralIssue, type Allergy, type Observation,
+} from "@/hooks/useMedicalRecords";
 import { toast } from "sonner";
 
-type Category = "vaccine" | "diagnosis" | "medication" | "surgery" | "behavioral" | "allergy" | "observation";
-
-interface CategoryDef { key: Category; label: string; icon: React.ElementType }
+type CategoryDef = { key: MedicalCategory; label: string; icon: React.ElementType };
 
 const CATEGORIES: CategoryDef[] = [
   { key: "vaccine", label: "Vaccine History", icon: Syringe },
@@ -38,51 +42,88 @@ const MED_FREQUENCIES = ["Once daily", "Twice daily", "As needed", "Weekly", "Mo
 const ALLERGY_TYPES = ["Food", "Environmental", "Medication", "Contact", "Other"];
 const OBSERVATION_STATUSES = ["New", "Monitoring", "Vet Reviewed", "Resolved"];
 
+// Unified record type for display purposes
+interface DisplayRecord {
+  id: string;
+  category: MedicalCategory;
+  name: string;
+  date: string | null;
+  data: Record<string, any>;
+}
+
+function toDisplayRecords(category: MedicalCategory, items: any[]): DisplayRecord[] {
+  return items.map((item) => {
+    let name = "";
+    let date: string | null = null;
+    switch (category) {
+      case "vaccine": name = item.vaccine_name; date = item.date_administered; break;
+      case "diagnosis": name = item.diagnosis_name; date = item.date_diagnosed; break;
+      case "medication": name = item.medication_name; date = item.start_date; break;
+      case "surgery": name = item.procedure_name; date = item.date; break;
+      case "behavioral": name = item.issue; date = item.first_noticed; break;
+      case "allergy": name = item.allergen; date = item.date_identified; break;
+      case "observation": name = item.title; date = item.date_first_noticed; break;
+    }
+    return { id: item.id, category, name, date, data: item };
+  });
+}
+
 interface Props { petId: string }
 
 export const MedicalSections = ({ petId }: Props) => {
-  const { data: records = [] } = useMedicalRecords(petId);
-  const [expandedCat, setExpandedCat] = useState<Category | null>(null);
-  const [addCat, setAddCat] = useState<Category | null>(null);
-  const [editRecord, setEditRecord] = useState<MedicalRecord | null>(null);
+  const vaccines = useVaccines(petId);
+  const diagnoses = useDiagnoses(petId);
+  const medications = useMedications(petId);
+  const surgeries = useSurgeries(petId);
+  const behavioralIssues = useBehavioralIssues(petId);
+  const allergies = useAllergies(petId);
+  const observations = useObservations(petId);
 
-  const byCategory = (cat: Category) => records.filter((r) => r.category === cat);
+  const dataMap: Record<MedicalCategory, any[]> = {
+    vaccine: vaccines.data ?? [],
+    diagnosis: diagnoses.data ?? [],
+    medication: medications.data ?? [],
+    surgery: surgeries.data ?? [],
+    behavioral: behavioralIssues.data ?? [],
+    allergy: allergies.data ?? [],
+    observation: observations.data ?? [],
+  };
 
-  // Upcoming vaccines (due in next 90 days)
-  const upcomingVaccines = records.filter((r) => {
-    if (r.category !== "vaccine" || !r.details?.next_due_date) return false;
-    const due = parseISO(r.details.next_due_date);
-    const days = differenceInDays(due, new Date());
+  const [expandedCat, setExpandedCat] = useState<MedicalCategory | null>(null);
+  const [addCat, setAddCat] = useState<MedicalCategory | null>(null);
+  const [editRecord, setEditRecord] = useState<DisplayRecord | null>(null);
+
+  // Upcoming vaccines
+  const upcomingVaccines = (dataMap.vaccine as Vaccine[]).filter((v) => {
+    if (!v.next_due_date) return false;
+    const days = differenceInDays(parseISO(v.next_due_date), new Date());
     return days >= 0 && days <= 90;
   });
 
-  // Active allergies
-  const activeAllergies = records.filter((r) => r.category === "allergy");
+  const activeAllergies = dataMap.allergy as Allergy[];
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Allergy warning banner */}
       {activeAllergies.length > 0 && (
         <div className="rounded-xl border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 p-3">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTriangle className="h-4 w-4 text-yellow-600" aria-hidden="true" />
             <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Known Allergies</p>
           </div>
           <p className="text-xs text-yellow-700 dark:text-yellow-400">
-            {activeAllergies.map((a) => a.title).join(", ")}
+            {activeAllergies.map((a) => a.allergen).join(", ")}
           </p>
         </div>
       )}
 
-      {/* Upcoming vaccines */}
       {upcomingVaccines.length > 0 && (
         <div className="rounded-xl border-2 border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 p-3">
           <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-1">🔔 Upcoming Vaccines</p>
           {upcomingVaccines.map((v) => {
-            const days = differenceInDays(parseISO(v.details.next_due_date), new Date());
+            const days = differenceInDays(parseISO(v.next_due_date!), new Date());
             return (
               <p key={v.id} className="text-xs text-yellow-700 dark:text-yellow-400">
-                {v.title} — due in {days} day{days !== 1 ? "s" : ""} ({format(parseISO(v.details.next_due_date), "MMM d, yyyy")})
+                {v.vaccine_name} — due in {days} day{days !== 1 ? "s" : ""} ({format(parseISO(v.next_due_date!), "MMM d, yyyy")})
               </p>
             );
           })}
@@ -90,23 +131,24 @@ export const MedicalSections = ({ petId }: Props) => {
       )}
 
       {CATEGORIES.map((cat) => {
-        const items = byCategory(cat.key);
-        const latest = items[0];
+        const items = dataMap[cat.key];
+        const displayItems = toDisplayRecords(cat.key, items);
+        const latest = displayItems[0];
         return (
           <Card key={cat.key} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setExpandedCat(cat.key)}>
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <cat.icon className="h-5 w-5 text-primary" />
+                <cat.icon className="h-5 w-5 text-primary" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{cat.label}</p>
                 <p className="text-xs text-muted-foreground">
                   {items.length > 0
-                    ? `${items.length} entr${items.length > 1 ? "ies" : "y"} · Last: ${latest?.record_date ? format(parseISO(latest.record_date), "MMM d, yyyy") : "N/A"}`
+                    ? `${items.length} entr${items.length > 1 ? "ies" : "y"} · Last: ${latest?.date ? format(parseISO(latest.date), "MMM d, yyyy") : "N/A"}`
                     : "No entries yet"}
                 </p>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             </CardContent>
           </Card>
         );
@@ -115,7 +157,7 @@ export const MedicalSections = ({ petId }: Props) => {
       {expandedCat && (
         <CategoryDetailSheet
           category={expandedCat}
-          records={byCategory(expandedCat)}
+          records={toDisplayRecords(expandedCat, dataMap[expandedCat])}
           petId={petId}
           onClose={() => setExpandedCat(null)}
           onAdd={() => setAddCat(expandedCat)}
@@ -125,7 +167,7 @@ export const MedicalSections = ({ petId }: Props) => {
 
       {(addCat || editRecord) && (
         <RecordFormSheet
-          category={editRecord?.category as Category ?? addCat!}
+          category={editRecord?.category ?? addCat!}
           petId={petId}
           existing={editRecord}
           onClose={() => { setAddCat(null); setEditRecord(null); }}
@@ -137,7 +179,7 @@ export const MedicalSections = ({ petId }: Props) => {
 
 // ── Category Detail Sheet ──
 function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit }: {
-  category: Category; records: MedicalRecord[]; petId: string; onClose: () => void; onAdd: () => void; onEdit: (r: MedicalRecord) => void;
+  category: MedicalCategory; records: DisplayRecord[]; petId: string; onClose: () => void; onAdd: () => void; onEdit: (r: DisplayRecord) => void;
 }) {
   const deleteRecord = useDeleteMedicalRecord();
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -147,15 +189,13 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
 
   let filtered = records;
 
-  // Diagnosis status filter
   if (category === "diagnosis" && statusFilter !== "all") {
-    filtered = records.filter((r) => r.details?.status === statusFilter);
+    filtered = records.filter((r) => r.data.status === statusFilter);
   }
 
-  // Medication current/past filter
   if (category === "medication") {
     filtered = records.filter((r) => {
-      const endDate = r.details?.end_date;
+      const endDate = r.data.end_date;
       const isCurrent = !endDate || !isBefore(parseISO(endDate), new Date());
       return medTab === "current" ? isCurrent : !isCurrent;
     });
@@ -167,7 +207,6 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
         <SheetContent side="bottom" className="rounded-t-2xl h-[80vh]">
           <SheetHeader><SheetTitle>{catDef.label}</SheetTitle></SheetHeader>
 
-          {/* Diagnosis filter */}
           {category === "diagnosis" && (
             <div className="flex gap-1 pt-3">
               {["all", "Active", "Resolved", "Monitoring"].map((s) => (
@@ -178,7 +217,6 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
             </div>
           )}
 
-          {/* Medication tabs */}
           {category === "medication" && (
             <div className="flex gap-1 pt-3">
               {(["current", "past"] as const).map((t) => (
@@ -197,9 +235,9 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
                 filtered.map((r) => (
                   <div key={r.id} className="flex items-start gap-2 rounded-lg border border-border p-3">
                     <button onClick={() => onEdit(r)} className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-medium text-foreground">{r.title}</p>
-                      {r.record_date && <p className="text-xs text-muted-foreground">{format(parseISO(r.record_date), "PPP")}</p>}
-                      <RecordSummary record={r} />
+                      <p className="text-sm font-medium text-foreground">{r.name}</p>
+                      {r.date && <p className="text-xs text-muted-foreground">{format(parseISO(r.date), "PPP")}</p>}
+                      <RecordSummary category={category} data={r.data} />
                     </button>
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => onEdit(r)} className="p-1 text-muted-foreground hover:text-primary"><Pencil className="h-3.5 w-3.5" /></button>
@@ -222,7 +260,7 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
           <AlertDialogHeader><AlertDialogTitle>Delete record?</AlertDialogTitle><AlertDialogDescription>This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteId) deleteRecord.mutate({ id: deleteId, petId }, { onSuccess: () => toast.success("Deleted"), onError: () => toast.error("Failed") }); setDeleteId(null); }}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (deleteId) deleteRecord.mutate({ id: deleteId, petId, category }, { onSuccess: () => toast.success("Deleted"), onError: () => toast.error("Failed") }); setDeleteId(null); }}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -230,60 +268,64 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
   );
 }
 
-function RecordSummary({ record }: { record: MedicalRecord }) {
-  const d = record.details ?? {};
+function RecordSummary({ category, data: d }: { category: MedicalCategory; data: Record<string, any> }) {
   return (
     <div className="mt-0.5 space-y-0.5">
-      {d.status && <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${d.status === "Active" || d.status === "Current" ? "bg-primary/10 text-primary" : d.status === "Resolved" ? "bg-muted text-muted-foreground" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>{d.status}</span>}
+      {d.status && <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${d.status === "Active" || d.status === "Current" || d.status === "active" ? "bg-primary/10 text-primary" : d.status === "Resolved" || d.status === "resolved" ? "bg-muted text-muted-foreground" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>{d.status}</span>}
       {d.dosage && <p className="text-xs text-muted-foreground">Dosage: {d.dosage}</p>}
       {d.frequency && <p className="text-xs text-muted-foreground">Frequency: {d.frequency}</p>}
       {d.severity && <p className="text-xs text-muted-foreground">Severity: {d.severity}</p>}
       {d.type && <p className="text-xs text-muted-foreground">Type: {d.type}</p>}
       {d.reaction && <p className="text-xs text-muted-foreground">Reaction: {d.reaction}</p>}
       {d.next_due_date && <p className="text-xs text-primary font-medium">Next due: {format(parseISO(d.next_due_date), "MMM d, yyyy")}</p>}
-      {d.location && <p className="text-xs text-muted-foreground">Location: {d.location}</p>}
+      {d.body_location && <p className="text-xs text-muted-foreground">Location: {d.body_location}</p>}
       {d.notes && <p className="text-xs text-muted-foreground line-clamp-2">{d.notes}</p>}
     </div>
   );
 }
 
 // ── Unified Record Form Sheet ──
-function RecordFormSheet({ category, petId, existing, onClose }: { category: Category; petId: string; existing: MedicalRecord | null; onClose: () => void }) {
+function RecordFormSheet({ category, petId, existing, onClose }: { category: MedicalCategory; petId: string; existing: DisplayRecord | null; onClose: () => void }) {
   const isEdit = !!existing;
   const addRecord = useAddMedicalRecord();
   const updateRecord = useUpdateMedicalRecord();
   const catDef = CATEGORIES.find((c) => c.key === category)!;
 
-  const [title, setTitle] = useState(existing?.title ?? "");
-  const [date, setDate] = useState<Date | undefined>(existing?.record_date ? parseISO(existing.record_date) : new Date());
-  const d = existing?.details ?? {};
+  const d = existing?.data ?? {};
 
-  // Shared detail fields
-  const [notes, setNotes] = useState(d.notes ?? "");
-  const [vet, setVet] = useState(d.vet ?? "");
+  // Name/title
+  const [name, setName] = useState(existing?.name ?? "");
+  const [date, setDate] = useState<Date | undefined>(() => {
+    const dateStr = existing?.date;
+    return dateStr ? parseISO(dateStr) : new Date();
+  });
+
+  // Shared
+  const [notes, setNotes] = useState(d.notes ?? d.outcome_notes ?? "");
+  const [vet, setVet] = useState(d.administering_vet ?? d.diagnosing_vet ?? d.prescribing_vet ?? d.surgeon_clinic ?? "");
 
   // Vaccine
   const [nextDueDate, setNextDueDate] = useState(d.next_due_date ?? "");
   const [lotNumber, setLotNumber] = useState(d.lot_number ?? "");
 
   // Diagnosis
-  const [diagStatus, setDiagStatus] = useState(d.status ?? "Active");
+  const [diagStatus, setDiagStatus] = useState(d.status ?? "active");
 
   // Medication
   const [dosage, setDosage] = useState(d.dosage ?? "");
   const [frequency, setFrequency] = useState(d.frequency ?? "");
   const [endDate, setEndDate] = useState(d.end_date ?? "");
-  const [refillReminder, setRefillReminder] = useState(d.refill_reminder ?? false);
+  const [refillReminder, setRefillReminder] = useState(d.refill_reminder_enabled ?? false);
   const [refillDate, setRefillDate] = useState(d.refill_date ?? "");
 
   // Surgery
   const [reason, setReason] = useState(d.reason ?? "");
-  const [outcome, setOutcome] = useState(d.outcome ?? "");
+  const [outcome, setOutcome] = useState(d.outcome_notes ?? "");
 
   // Behavioral
   const [severity, setSeverity] = useState(d.severity ?? "Mild");
-  const [behavStatus, setBehavStatus] = useState(d.status ?? "Active");
-  const [treatment, setTreatment] = useState(d.treatment ?? "");
+  const [behavStatus, setBehavStatus] = useState(d.status ?? "active");
+  const [treatment, setTreatment] = useState(d.treatment_plan ?? "");
 
   // Allergy
   const [allergyType, setAllergyType] = useState(d.type ?? "");
@@ -291,70 +333,50 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
   const [allergySeverity, setAllergySeverity] = useState(d.severity ?? "Mild");
 
   // Observation
-  const [location, setLocation] = useState(d.location ?? "");
-  const [description, setDescription] = useState(d.description ?? "");
+  const [bodyLocation, setBodyLocation] = useState(d.body_location ?? "");
+  const [sizeDescription, setSizeDescription] = useState(d.size_description ?? "");
   const [obsStatus, setObsStatus] = useState(d.status ?? "New");
   const [followUpDate, setFollowUpDate] = useState(d.follow_up_date ?? "");
 
   const isPending = addRecord.isPending || updateRecord.isPending;
 
-  const buildDetails = (): Record<string, any> => {
-    const det: Record<string, any> = {};
-    if (notes) det.notes = notes;
-    if (vet) det.vet = vet;
+  const buildData = (): Record<string, any> => {
+    const dateStr = date ? format(date, "yyyy-MM-dd") : null;
 
     switch (category) {
       case "vaccine":
-        if (nextDueDate) det.next_due_date = nextDueDate;
-        if (lotNumber) det.lot_number = lotNumber;
-        break;
+        return { vaccine_name: name, date_administered: dateStr, administering_vet: vet, next_due_date: nextDueDate || null, lot_number: lotNumber, notes };
       case "diagnosis":
-        det.status = diagStatus;
-        break;
+        return { diagnosis_name: name, date_diagnosed: dateStr, diagnosing_vet: vet, status: diagStatus, notes };
       case "medication":
-        if (dosage) det.dosage = dosage;
-        if (frequency) det.frequency = frequency;
-        if (endDate) det.end_date = endDate;
-        det.refill_reminder = refillReminder;
-        if (refillDate) det.refill_date = refillDate;
-        det.status = endDate && isBefore(parseISO(endDate), new Date()) ? "Discontinued" : "Current";
-        break;
+        return {
+          medication_name: name, start_date: dateStr, dosage, frequency,
+          end_date: endDate || null, prescribing_vet: vet,
+          status: endDate && isBefore(parseISO(endDate), new Date()) ? "discontinued" : "active",
+          refill_reminder_enabled: refillReminder, refill_date: refillDate || null, notes,
+        };
       case "surgery":
-        if (reason) det.reason = reason;
-        if (outcome) det.outcome = outcome;
-        break;
+        return { procedure_name: name, date: dateStr, surgeon_clinic: vet, reason, outcome_notes: outcome };
       case "behavioral":
-        det.severity = severity;
-        det.status = behavStatus;
-        if (treatment) det.treatment = treatment;
-        break;
+        return { issue: name, first_noticed: dateStr, severity, status: behavStatus, treatment_plan: treatment, notes };
       case "allergy":
-        if (allergyType) det.type = allergyType;
-        if (reaction) det.reaction = reaction;
-        det.severity = allergySeverity;
-        break;
+        return { allergen: name, date_identified: dateStr, type: allergyType, reaction, severity: allergySeverity, notes };
       case "observation":
-        if (location) det.location = location;
-        if (description) det.description = description;
-        det.status = obsStatus;
-        if (followUpDate) det.follow_up_date = followUpDate;
-        break;
+        return { title: name, date_first_noticed: dateStr, body_location: bodyLocation, size_description: sizeDescription, status: obsStatus, follow_up_date: followUpDate || null, notes };
     }
-    return det;
   };
 
   const handleSave = () => {
-    if (!title.trim()) { toast.error("Name/title is required"); return; }
-    const details = buildDetails();
-    const recordDate = date ? format(date, "yyyy-MM-dd") : undefined;
+    if (!name.trim()) { toast.error("Name/title is required"); return; }
+    const data = buildData();
 
-    if (isEdit) {
-      updateRecord.mutate({ id: existing.id, pet_id: petId, title: title.trim(), details, record_date: recordDate ?? null }, {
+    if (isEdit && existing) {
+      updateRecord.mutate({ id: existing.id, pet_id: petId, category, data }, {
         onSuccess: () => { toast.success("Updated"); onClose(); },
         onError: () => toast.error("Failed to update"),
       });
     } else {
-      addRecord.mutate({ pet_id: petId, category, title: title.trim(), details, record_date: recordDate }, {
+      addRecord.mutate({ pet_id: petId, category, data }, {
         onSuccess: () => { toast.success("Added"); onClose(); },
         onError: () => toast.error("Failed to save"),
       });
@@ -368,11 +390,10 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
         <ScrollArea className="h-[calc(85vh-9rem)] pr-2">
           <div className="flex flex-col gap-4 pt-4 pb-2">
 
-            {/* Title — vaccine uses dropdown, others text */}
             {category === "vaccine" ? (
               <div>
                 <Label>Vaccine Name</Label>
-                <Select value={title} onValueChange={setTitle}>
+                <Select value={name} onValueChange={setName}>
                   <SelectTrigger><SelectValue placeholder="Select vaccine" /></SelectTrigger>
                   <SelectContent>{VACCINE_NAMES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
                 </Select>
@@ -380,16 +401,14 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
             ) : (
               <div>
                 <Label>{category === "allergy" ? "Allergen" : category === "observation" ? "Title" : category === "behavioral" ? "Issue" : "Name"}</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={
                   category === "medication" ? "e.g. Apoquel" : category === "allergy" ? "e.g. Chicken" : category === "behavioral" ? "e.g. Separation anxiety" : category === "observation" ? "e.g. New lump on left shoulder" : "Enter name"
                 } />
               </div>
             )}
 
-            {/* Date */}
             <DateField label={category === "behavioral" ? "First Noticed" : category === "allergy" ? "Date Identified" : category === "observation" ? "Date First Noticed" : category === "vaccine" ? "Date Administered" : category === "surgery" ? "Date of Surgery" : "Date"} value={date} onChange={setDate} />
 
-            {/* ── VACCINE FIELDS ── */}
             {category === "vaccine" && (
               <>
                 <div><Label>Administering Vet/Clinic</Label><Input value={vet} onChange={(e) => setVet(e.target.value)} /></div>
@@ -398,17 +417,16 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* ── DIAGNOSIS FIELDS ── */}
             {category === "diagnosis" && (
               <>
                 <div><Label>Diagnosing Vet</Label><Input value={vet} onChange={(e) => setVet(e.target.value)} /></div>
                 <div>
                   <Label>Status</Label>
                   <RadioGroup value={diagStatus} onValueChange={setDiagStatus} className="flex gap-4 mt-1">
-                    {["Active", "Resolved", "Monitoring"].map((s) => (
+                    {["active", "resolved", "monitoring"].map((s) => (
                       <div key={s} className="flex items-center gap-1.5">
                         <RadioGroupItem value={s} id={`diag-${s}`} />
-                        <Label htmlFor={`diag-${s}`} className="text-sm font-normal">{s}</Label>
+                        <Label htmlFor={`diag-${s}`} className="text-sm font-normal capitalize">{s}</Label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -416,7 +434,6 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* ── MEDICATION FIELDS ── */}
             {category === "medication" && (
               <>
                 <div><Label>Dosage</Label><Input value={dosage} onChange={(e) => setDosage(e.target.value)} placeholder="e.g. 50mg" /></div>
@@ -437,7 +454,6 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* ── SURGERY FIELDS ── */}
             {category === "surgery" && (
               <>
                 <div><Label>Surgeon/Clinic</Label><Input value={vet} onChange={(e) => setVet(e.target.value)} /></div>
@@ -446,7 +462,6 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* ── BEHAVIORAL FIELDS ── */}
             {category === "behavioral" && (
               <>
                 <div>
@@ -463,10 +478,10 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
                 <div>
                   <Label>Status</Label>
                   <RadioGroup value={behavStatus} onValueChange={setBehavStatus} className="flex gap-4 mt-1">
-                    {["Active", "Improving", "Resolved"].map((s) => (
+                    {["active", "improving", "resolved"].map((s) => (
                       <div key={s} className="flex items-center gap-1.5">
                         <RadioGroupItem value={s} id={`bstat-${s}`} />
-                        <Label htmlFor={`bstat-${s}`} className="text-sm font-normal">{s}</Label>
+                        <Label htmlFor={`bstat-${s}`} className="text-sm font-normal capitalize">{s}</Label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -475,7 +490,6 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* ── ALLERGY FIELDS ── */}
             {category === "allergy" && (
               <>
                 <div>
@@ -500,11 +514,10 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* ── OBSERVATION FIELDS ── */}
             {category === "observation" && (
               <>
-                <div><Label>Location on Body</Label><Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Left shoulder" /></div>
-                <div><Label>Size/Description</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} /></div>
+                <div><Label>Location on Body</Label><Input value={bodyLocation} onChange={(e) => setBodyLocation(e.target.value)} placeholder="e.g. Left shoulder" /></div>
+                <div><Label>Size/Description</Label><Textarea value={sizeDescription} onChange={(e) => setSizeDescription(e.target.value)} rows={2} /></div>
                 <div>
                   <Label>Status</Label>
                   <Select value={obsStatus} onValueChange={setObsStatus}>
@@ -516,7 +529,6 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Cat
               </>
             )}
 
-            {/* Notes (all categories) */}
             {category !== "surgery" && (
               <div><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes..." rows={2} /></div>
             )}
@@ -540,7 +552,7 @@ function DateField({ label, value, onChange }: { label: string; value: Date | un
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             {value ? format(value, "PPP") : "Pick a date"}
           </Button>
         </PopoverTrigger>
@@ -560,7 +572,7 @@ function DateFieldStr({ label, value, onChange }: { label: string; value: string
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             {date ? format(date, "PPP") : "Pick a date"}
           </Button>
         </PopoverTrigger>

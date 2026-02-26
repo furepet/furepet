@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAddMedicalRecord } from "@/hooks/useMedicalRecords";
+import { useAddMedicalRecord, type MedicalCategory } from "@/hooks/useMedicalRecords";
 import { toast } from "sonner";
 
 interface ExtractedItem {
-  category: string;
-  title: string;
-  details: Record<string, any>;
-  date?: string;
+  category: MedicalCategory;
+  data: Record<string, any>;
+  displayName: string;
+  displayDate?: string;
   selected: boolean;
 }
 
@@ -40,11 +40,40 @@ export const ReviewExtractedData = ({ data, petId, petName, documentId, onDone }
 
   const buildItems = (): ExtractedItem[] => {
     const items: ExtractedItem[] = [];
-    data.vaccines?.forEach((v) => items.push({ category: "vaccine", title: v.name, details: { notes: v.notes }, date: v.date, selected: true }));
-    data.diagnoses?.forEach((d) => items.push({ category: "diagnosis", title: d.name, details: { notes: d.notes }, date: d.date, selected: true }));
-    data.medications?.forEach((m) => items.push({ category: "medication", title: m.name, details: { dosage: m.dosage, frequency: m.frequency, start_date: m.start_date, end_date: m.end_date, notes: m.notes }, date: m.start_date, selected: true }));
-    data.surgeries?.forEach((s) => items.push({ category: "surgery", title: s.name, details: { notes: s.notes }, date: s.date, selected: true }));
-    data.allergies?.forEach((a) => items.push({ category: "allergy", title: a.name, details: { severity: a.severity, notes: a.notes }, selected: true }));
+    data.vaccines?.forEach((v) => items.push({
+      category: "vaccine",
+      displayName: v.name,
+      displayDate: v.date,
+      data: { vaccine_name: v.name, date_administered: v.date || null, notes: v.notes || "", lot_number: "" },
+      selected: true,
+    }));
+    data.diagnoses?.forEach((d) => items.push({
+      category: "diagnosis",
+      displayName: d.name,
+      displayDate: d.date,
+      data: { diagnosis_name: d.name, date_diagnosed: d.date || null, notes: d.notes || "", status: "active" },
+      selected: true,
+    }));
+    data.medications?.forEach((m) => items.push({
+      category: "medication",
+      displayName: m.name,
+      displayDate: m.start_date,
+      data: { medication_name: m.name, dosage: m.dosage || "", frequency: m.frequency || "", start_date: m.start_date || null, end_date: m.end_date || null, notes: m.notes || "", status: "active" },
+      selected: true,
+    }));
+    data.surgeries?.forEach((s) => items.push({
+      category: "surgery",
+      displayName: s.name,
+      displayDate: s.date,
+      data: { procedure_name: s.name, date: s.date || null, reason: "", outcome_notes: s.notes || "" },
+      selected: true,
+    }));
+    data.allergies?.forEach((a) => items.push({
+      category: "allergy",
+      displayName: a.name,
+      data: { allergen: a.name, severity: a.severity || "", notes: a.notes || "" },
+      selected: true,
+    }));
     return items;
   };
 
@@ -75,10 +104,7 @@ export const ReviewExtractedData = ({ data, petId, petName, documentId, onDone }
         await addRecord.mutateAsync({
           pet_id: petId,
           category: item.category,
-          title: item.title,
-          details: item.details,
-          record_date: item.date || undefined,
-          source_document_id: documentId,
+          data: item.data,
         });
       }
       toast.success(`${selected.length} record${selected.length > 1 ? "s" : ""} saved`);
@@ -106,10 +132,10 @@ export const ReviewExtractedData = ({ data, petId, petName, documentId, onDone }
                   {CATEGORY_LABELS[item.category]}
                 </span>
               </div>
-              <p className="text-sm font-medium text-foreground mt-1">{item.title}</p>
-              {item.date && <p className="text-xs text-muted-foreground">{item.date}</p>}
-              {item.details?.dosage && <p className="text-xs text-muted-foreground">Dosage: {item.details.dosage}</p>}
-              {item.details?.notes && <p className="text-xs text-muted-foreground">{item.details.notes}</p>}
+              <p className="text-sm font-medium text-foreground mt-1">{item.displayName}</p>
+              {item.displayDate && <p className="text-xs text-muted-foreground">{item.displayDate}</p>}
+              {item.data?.dosage && <p className="text-xs text-muted-foreground">Dosage: {item.data.dosage}</p>}
+              {item.data?.notes && <p className="text-xs text-muted-foreground">{item.data.notes}</p>}
             </div>
           </label>
         ))}

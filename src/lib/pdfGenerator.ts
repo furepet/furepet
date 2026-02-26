@@ -1,10 +1,20 @@
 import jsPDF from "jspdf";
 import { format, parseISO, differenceInYears, differenceInMonths } from "date-fns";
 import type { Pet } from "@/hooks/usePets";
-import type { MedicalRecord } from "@/hooks/useMedicalRecords";
+import type { Vaccine, Diagnosis, Medication, Surgery, BehavioralIssue, Allergy, Observation } from "@/hooks/useMedicalRecords";
 
-const PRIMARY_COLOR: [number, number, number] = [46, 125, 50]; // #2E7D32
-const ALLERGY_BG: [number, number, number] = [255, 248, 225]; // amber-50
+export interface MedicalData {
+  vaccines: Vaccine[];
+  diagnoses: Diagnosis[];
+  medications: Medication[];
+  surgeries: Surgery[];
+  behavioralIssues: BehavioralIssue[];
+  allergies: Allergy[];
+  observations: Observation[];
+}
+
+const PRIMARY_COLOR: [number, number, number] = [46, 125, 50];
+const ALLERGY_BG: [number, number, number] = [255, 248, 225];
 const HEADER_HEIGHT = 28;
 
 const formatAge = (dob: string | null): string => {
@@ -70,11 +80,9 @@ function addBasicsSection(doc: jsPDF, pet: Pet, y: number): number {
   return y + 4;
 }
 
-function addAllergySection(doc: jsPDF, records: MedicalRecord[], y: number): number {
-  const allergies = records.filter((r) => r.category === "allergies");
+function addAllergySection(doc: jsPDF, allergies: Allergy[], y: number): number {
   if (allergies.length === 0) return y;
   y = addSectionTitle(doc, "⚠️ Allergies", y);
-  // Highlight background
   const blockHeight = allergies.length * 6 + 4;
   if (y + blockHeight > 275) { doc.addPage(); y = HEADER_HEIGHT + 10; }
   doc.setFillColor(...ALLERGY_BG);
@@ -82,19 +90,17 @@ function addAllergySection(doc: jsPDF, records: MedicalRecord[], y: number): num
   doc.setFontSize(9);
   doc.setTextColor(120, 80, 0);
   allergies.forEach((a) => {
-    const d = a.details as Record<string, any>;
     doc.setFont("helvetica", "bold");
-    doc.text(`• ${a.title}`, 18, y);
+    doc.text(`• ${a.allergen}`, 18, y);
     doc.setFont("helvetica", "normal");
-    if (d.type) doc.text(`(${d.type})`, 18 + doc.getTextWidth(`• ${a.title} `), y);
-    if (d.reaction) { y += 4.5; doc.text(`  Reaction: ${d.reaction}`, 18, y); }
+    if (a.type) doc.text(`(${a.type})`, 18 + doc.getTextWidth(`• ${a.allergen} `), y);
+    if (a.reaction) { y += 4.5; doc.text(`  Reaction: ${a.reaction}`, 18, y); }
     y += 5.5;
   });
   return y + 4;
 }
 
-function addMedicalRecordsSection(doc: jsPDF, title: string, category: string, records: MedicalRecord[], y: number): number {
-  const items = records.filter((r) => r.category === category);
+function addItemsSection(doc: jsPDF, title: string, items: { name: string; date?: string | null; extra?: string }[], y: number): number {
   if (items.length === 0) return y;
   y = addSectionTitle(doc, title, y);
   doc.setFontSize(9);
@@ -102,14 +108,11 @@ function addMedicalRecordsSection(doc: jsPDF, title: string, category: string, r
     if (y > 270) { doc.addPage(); y = HEADER_HEIGHT + 10; }
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 30, 30);
-    doc.text(`• ${item.title}`, 18, y);
+    doc.text(`• ${item.name}`, 18, y);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    if (item.record_date) doc.text(format(parseISO(item.record_date), "MMM d, yyyy"), 140, y);
-    const d = item.details as Record<string, any>;
-    if (d.status) { y += 4.5; doc.text(`  Status: ${d.status}`, 18, y); }
-    if (d.dosage) { y += 4.5; doc.text(`  Dosage: ${d.dosage} — ${d.frequency || ""}`, 18, y); }
-    if (d.notes) { y += 4.5; const lines = doc.splitTextToSize(`  Notes: ${d.notes}`, 170); doc.text(lines, 18, y); y += (lines.length - 1) * 4; }
+    if (item.date) doc.text(format(parseISO(item.date), "MMM d, yyyy"), 140, y);
+    if (item.extra) { y += 4.5; const lines = doc.splitTextToSize(`  ${item.extra}`, 170); doc.text(lines, 18, y); y += (lines.length - 1) * 4; }
     y += 6;
   });
   return y + 2;
@@ -128,17 +131,11 @@ function addFooter(doc: jsPDF) {
 
 export type ShareType = "full" | "vet" | "basics";
 
-export function generatePetPdf(
-  pet: Pet,
-  records: MedicalRecord[],
-  type: ShareType
-): jsPDF {
+export function generatePetPdf(pet: Pet, records: MedicalData, type: ShareType): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   addHeader(doc, pet.pet_name);
 
   let y = HEADER_HEIGHT + 10;
-
-  // Basics always included
   y = addBasicsSection(doc, pet, y);
 
   if (type === "basics") {
@@ -146,24 +143,32 @@ export function generatePetPdf(
     return doc;
   }
 
-  // Allergies (highlighted) — for vet and full
-  y = addAllergySection(doc, records, y);
+  y = addAllergySection(doc, records.allergies, y);
 
-  // Vaccines
-  y = addMedicalRecordsSection(doc, "Vaccine History", "vaccines", records, y);
+  y = addItemsSection(doc, "Vaccine History", records.vaccines.map((v) => ({
+    name: v.vaccine_name, date: v.date_administered,
+  })), y);
 
-  // Medications
-  y = addMedicalRecordsSection(doc, "Current Medications", "medications", records, y);
+  y = addItemsSection(doc, "Current Medications", records.medications.map((m) => ({
+    name: m.medication_name, date: m.start_date, extra: m.dosage ? `Dosage: ${m.dosage} — ${m.frequency}` : undefined,
+  })), y);
 
   if (type === "full") {
-    // Diagnoses
-    y = addMedicalRecordsSection(doc, "Diagnoses", "diagnoses", records, y);
-    // Surgeries
-    y = addMedicalRecordsSection(doc, "Surgeries", "surgeries", records, y);
-    // Behavioral
-    y = addMedicalRecordsSection(doc, "Behavioral Issues", "behavioral", records, y);
-    // Observations
-    y = addMedicalRecordsSection(doc, "Observations", "observations", records, y);
+    y = addItemsSection(doc, "Diagnoses", records.diagnoses.map((d) => ({
+      name: d.diagnosis_name, date: d.date_diagnosed, extra: d.status ? `Status: ${d.status}` : undefined,
+    })), y);
+
+    y = addItemsSection(doc, "Surgeries", records.surgeries.map((s) => ({
+      name: s.procedure_name, date: s.date,
+    })), y);
+
+    y = addItemsSection(doc, "Behavioral Issues", records.behavioralIssues.map((b) => ({
+      name: b.issue, date: b.first_noticed, extra: b.status ? `Status: ${b.status}` : undefined,
+    })), y);
+
+    y = addItemsSection(doc, "Observations", records.observations.map((o) => ({
+      name: o.title, date: o.date_first_noticed, extra: o.status ? `Status: ${o.status}` : undefined,
+    })), y);
   }
 
   addFooter(doc);
@@ -183,7 +188,6 @@ export async function sharePdf(doc: jsPDF, filename: string) {
     }
   }
 
-  // Fallback: download
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
