@@ -4,9 +4,11 @@ import {
   FileText, LogOut, Trash2, Lock, ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 
 const More = () => {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const handlePremiumTap = () => {
     // TODO: check subscription, show upgrade prompt for free users
@@ -21,7 +23,7 @@ const More = () => {
   ];
 
   const dangerItems = [
-    { label: "Log Out", icon: LogOut, action: () => {} },
+    { label: "Log Out", icon: LogOut, action: () => signOut() },
     { label: "Delete Account", icon: Trash2, action: () => {} },
   ];
 
