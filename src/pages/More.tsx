@@ -1,32 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import {
-  MessageCircle, Heart, Settings, HelpCircle, Mail, Star,
-  FileText, LogOut, Trash2, Lock, ChevronRight, Bell,
+  MessageCircle, Heart, Settings, Lock, ChevronRight,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
 
 const More = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
-
-  const handlePremiumTap = () => {
-    navigate("/more/ai-chat");
-  };
-
-  const menuItems = [
-    { label: "Notifications", icon: Bell, action: () => navigate("/more/notifications") },
-    { label: "Settings & Account", icon: Settings, action: () => {} },
-    { label: "Help & FAQ", icon: HelpCircle, action: () => {} },
-    { label: "Contact Support", icon: Mail, action: () => {} },
-    { label: "Rate FurePET", icon: Star, action: () => {} },
-    { label: "Terms of Service / Privacy Policy", icon: FileText, action: () => {} },
-  ];
-
-  const dangerItems = [
-    { label: "Log Out", icon: LogOut, action: () => signOut() },
-    { label: "Delete Account", icon: Trash2, action: () => {} },
-  ];
 
   return (
     <div className="flex flex-col gap-5">
@@ -35,7 +14,7 @@ const More = () => {
       {/* AI Chat — Premium */}
       <Card
         className="cursor-pointer border-secondary/40 bg-secondary/5 hover:shadow-md transition-shadow"
-        onClick={handlePremiumTap}
+        onClick={() => navigate("/more/ai-chat")}
       >
         <CardContent className="flex items-center gap-3 p-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary/20">
@@ -69,32 +48,22 @@ const More = () => {
         </CardContent>
       </Card>
 
-      {/* Menu Items */}
-      <div className="flex flex-col gap-2">
-        {menuItems.map((item) => (
-          <Card key={item.label} className="cursor-pointer hover:shadow-md transition-shadow" onClick={item.action}>
-            <CardContent className="flex items-center gap-3 p-3.5">
-              <item.icon className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground flex-1">{item.label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Danger Zone */}
-      <div className="flex flex-col gap-2">
-        {dangerItems.map((item) => (
-          <button
-            key={item.label}
-            onClick={item.action}
-            className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-sm font-medium text-destructive hover:bg-destructive/5 transition-colors"
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {/* Settings & Account */}
+      <Card
+        className="cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => navigate("/more/settings")}
+      >
+        <CardContent className="flex items-center gap-3 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <Settings className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Settings & Account</p>
+            <p className="text-xs text-muted-foreground">Profile, pets, notifications, preferences</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </CardContent>
+      </Card>
     </div>
   );
 };
