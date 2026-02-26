@@ -14,6 +14,118 @@ export type Database = {
   }
   public: {
     Tables: {
+      breed_weight_ranges: {
+        Row: {
+          avg_weight_lbs: number
+          breed: string
+          id: string
+          max_weight_lbs: number
+          min_weight_lbs: number
+          species: string
+        }
+        Insert: {
+          avg_weight_lbs: number
+          breed: string
+          id?: string
+          max_weight_lbs: number
+          min_weight_lbs: number
+          species: string
+        }
+        Update: {
+          avg_weight_lbs?: number
+          breed?: string
+          id?: string
+          max_weight_lbs?: number
+          min_weight_lbs?: number
+          species?: string
+        }
+        Relationships: []
+      }
+      pet_measurements: {
+        Row: {
+          category: string
+          created_at: string
+          custom_category: string | null
+          id: string
+          measurement_unit: string
+          measurement_value: number
+          pet_id: string
+          recorded_date: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          custom_category?: string | null
+          id?: string
+          measurement_unit?: string
+          measurement_value: number
+          pet_id: string
+          recorded_date?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          custom_category?: string | null
+          id?: string
+          measurement_unit?: string
+          measurement_value?: number
+          pet_id?: string
+          recorded_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_measurements_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_weights: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          pet_id: string
+          recorded_date: string
+          user_id: string
+          weight_unit: string
+          weight_value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          pet_id: string
+          recorded_date?: string
+          user_id: string
+          weight_unit?: string
+          weight_value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          pet_id?: string
+          recorded_date?: string
+          user_id?: string
+          weight_unit?: string
+          weight_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_weights_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pets: {
         Row: {
           breed: string | null
