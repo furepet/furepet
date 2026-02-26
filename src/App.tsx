@@ -29,7 +29,7 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
   if (loading) return null;
-  if (!session) return <Navigate to="/auth/login" replace />;
+  if (!session) return <Navigate to="/auth" replace />;
   if (!onboardingCompleted) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
   if (loading) return null;
-  if (!session) return <Navigate to="/auth/login" replace />;
+  if (!session) return <Navigate to="/auth" replace />;
   if (onboardingCompleted) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
@@ -57,8 +57,9 @@ const AppRoutes = () => {
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       <Routes>
         {/* Auth routes */}
+        <Route path="/auth" element={<AuthRoute><Login /></AuthRoute>} />
         <Route path="/auth/signup" element={<AuthRoute><SignUp /></AuthRoute>} />
-        <Route path="/auth/login" element={<AuthRoute><Login /></AuthRoute>} />
+        <Route path="/auth/login" element={<Navigate to="/auth" replace />} />
         <Route path="/auth/verify" element={<VerifyEmail />} />
         <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
