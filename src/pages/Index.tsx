@@ -21,10 +21,10 @@ const Index = () => {
   };
 
   const quickCards = [
-    { label: "My Pet", icon: PawPrint, path: "/my-pet", color: "text-primary" },
-    { label: "Village", icon: Users, path: "/village", color: "text-primary" },
-    { label: "Medical", icon: Stethoscope, path: "/medical", color: "text-primary" },
-    { label: "AI Chat", icon: MessageCircle, path: "/more", color: "text-primary" },
+    { label: "My Pet", subtitle: "View Buddy's profile & trends", icon: PawPrint, path: "/my-pet" },
+    { label: "Village", subtitle: "Vet, groomer, walker & more", icon: Users, path: "/village" },
+    { label: "Medical", subtitle: "Records, vaccines & medications", icon: Stethoscope, path: "/medical" },
+    { label: "AI Chat", subtitle: "Ask anything about pet care", icon: MessageCircle, path: "/more" },
   ];
 
   return (
@@ -66,9 +66,10 @@ const Index = () => {
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate(card.path)}
           >
-            <CardContent className="flex flex-col items-center gap-2 p-4">
-              <card.icon className={`h-7 w-7 ${card.color}`} />
+            <CardContent className="flex flex-col items-center gap-1.5 p-4 text-center">
+              <card.icon className="h-7 w-7 text-primary" />
               <span className="text-sm font-medium text-foreground">{card.label}</span>
+              <span className="text-xs text-muted-foreground leading-tight">{card.subtitle}</span>
             </CardContent>
           </Card>
         ))}
@@ -76,18 +77,18 @@ const Index = () => {
 
       {/* Emergency CPR/First Aid Card */}
       <Card
-        className="cursor-pointer border-destructive/30 bg-emergency-bg hover:shadow-md transition-shadow"
+        className="cursor-pointer border-destructive bg-destructive hover:bg-destructive/90 transition-colors shadow-md"
         onClick={() => navigate("/more/first-aid")}
       >
         <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-            <Heart className="h-6 w-6 text-destructive" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+            <Heart className="h-6 w-6 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-destructive">CPR & First Aid</p>
-            <p className="text-xs text-muted-foreground">Emergency guide — always free</p>
+            <p className="text-base font-semibold text-white">CPR & First Aid</p>
+            <p className="text-xs text-white/80">Emergency guide — always free</p>
           </div>
-          <ChevronRight className="h-5 w-5 text-destructive/60" />
+          <ChevronRight className="h-5 w-5 text-white/70" />
         </CardContent>
       </Card>
     </div>
