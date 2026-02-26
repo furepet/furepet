@@ -13,6 +13,7 @@ import Village from "./pages/Village";
 import Medical from "./pages/Medical";
 import More from "./pages/More";
 import FirstAid from "./pages/FirstAid";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import SignUp from "./pages/auth/SignUp";
 import Login from "./pages/auth/Login";
@@ -23,9 +24,18 @@ import ResetPassword from "./pages/auth/ResetPassword";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
+  const { session, loading, onboardingCompleted } = useAuth();
   if (loading) return null;
   if (!session) return <Navigate to="/auth/login" replace />;
+  if (!onboardingCompleted) return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
+};
+
+const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session, loading, onboardingCompleted } = useAuth();
+  if (loading) return null;
+  if (!session) return <Navigate to="/auth/login" replace />;
+  if (onboardingCompleted) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -49,6 +59,7 @@ const AppRoutes = () => {
         <Route path="/auth/verify" element={<VerifyEmail />} />
         <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/onboarding" element={<OnboardingRoute><Onboarding /></OnboardingRoute>} />
 
         {/* Protected app routes */}
         <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>

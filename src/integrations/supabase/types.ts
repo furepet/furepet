@@ -14,11 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      pets: {
+        Row: {
+          breed: string | null
+          breed_description: string | null
+          created_at: string
+          date_of_birth: string | null
+          has_insurance: boolean
+          id: string
+          insurance_company: string | null
+          is_premium: boolean
+          microchip_number: string | null
+          neuter_spay_date: string | null
+          neuter_spay_status: string
+          nickname: string | null
+          pet_name: string
+          photo_url: string | null
+          policy_number: string | null
+          species: string
+          together_since: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          breed?: string | null
+          breed_description?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          has_insurance?: boolean
+          id?: string
+          insurance_company?: string | null
+          is_premium?: boolean
+          microchip_number?: string | null
+          neuter_spay_date?: string | null
+          neuter_spay_status?: string
+          nickname?: string | null
+          pet_name: string
+          photo_url?: string | null
+          policy_number?: string | null
+          species?: string
+          together_since?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          breed?: string | null
+          breed_description?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          has_insurance?: boolean
+          id?: string
+          insurance_company?: string | null
+          is_premium?: boolean
+          microchip_number?: string | null
+          neuter_spay_date?: string | null
+          neuter_spay_status?: string
+          nickname?: string | null
+          pet_name?: string
+          photo_url?: string | null
+          policy_number?: string | null
+          species?: string
+          together_since?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           first_name: string
           id: string
+          onboarding_completed: boolean
           updated_at: string
           user_id: string
         }
@@ -26,6 +93,7 @@ export type Database = {
           created_at?: string
           first_name?: string
           id?: string
+          onboarding_completed?: boolean
           updated_at?: string
           user_id: string
         }
@@ -33,6 +101,7 @@ export type Database = {
           created_at?: string
           first_name?: string
           id?: string
+          onboarding_completed?: boolean
           updated_at?: string
           user_id?: string
         }
