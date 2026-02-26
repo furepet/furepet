@@ -41,6 +41,100 @@ export type Database = {
         }
         Relationships: []
       }
+      medical_documents: {
+        Row: {
+          created_at: string
+          extracted_data: Json | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          pet_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          extracted_data?: Json | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          pet_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          extracted_data?: Json | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          pet_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_documents_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medical_records: {
+        Row: {
+          category: string
+          created_at: string
+          details: Json
+          id: string
+          pet_id: string
+          record_date: string | null
+          source_document_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          details?: Json
+          id?: string
+          pet_id: string
+          record_date?: string | null
+          source_document_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          pet_id?: string
+          record_date?: string | null
+          source_document_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_records_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_measurements: {
         Row: {
           category: string
