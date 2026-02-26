@@ -206,10 +206,8 @@ const AiChat = () => {
     addRecord.mutate(
       {
         pet_id: activePet.id,
-        category: "observations",
-        title: "AI Chat Note",
-        details: { description: content },
-        record_date: new Date().toISOString().split("T")[0],
+        category: "observation",
+        data: { title: "AI Chat Note", notes: content, date_first_noticed: new Date().toISOString().split("T")[0], status: "New" },
       },
       {
         onSuccess: () =>

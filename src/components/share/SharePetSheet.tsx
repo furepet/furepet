@@ -17,7 +17,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { generatePetPdf, sharePdf, type ShareType } from "@/lib/pdfGenerator";
-import { useMedicalRecords } from "@/hooks/useMedicalRecords";
+import {
+  useVaccines, useDiagnoses, useMedications, useSurgeries,
+  useBehavioralIssues, useAllergies, useObservations,
+} from "@/hooks/useMedicalRecords";
 import type { Pet } from "@/hooks/usePets";
 
 interface SharePetSheetProps {
@@ -54,13 +57,21 @@ const shareOptions: {
 
 export const SharePetSheet = ({ pet, open, onOpenChange }: SharePetSheetProps) => {
   const { toast } = useToast();
-  const { data: records = [] } = useMedicalRecords(pet.id);
+  const { data: vaccines = [] } = useVaccines(pet.id);
+  const { data: diagnoses = [] } = useDiagnoses(pet.id);
+  const { data: medications = [] } = useMedications(pet.id);
+  const { data: surgeries = [] } = useSurgeries(pet.id);
+  const { data: behavioralIssues = [] } = useBehavioralIssues(pet.id);
+  const { data: allergies = [] } = useAllergies(pet.id);
+  const { data: observations = [] } = useObservations(pet.id);
   const [generating, setGenerating] = useState<ShareType | null>(null);
+
+  const allRecords = { vaccines, diagnoses, medications, surgeries, behavioralIssues, allergies, observations };
 
   const handleShare = async (type: ShareType) => {
     setGenerating(type);
     try {
-      const doc = generatePetPdf(pet, records, type);
+      const doc = generatePetPdf(pet, allRecords, type);
       const dateStr = new Date().toISOString().split("T")[0];
       const filename = `${pet.pet_name}_${type}_${dateStr}.pdf`;
       await sharePdf(doc, filename);
@@ -78,7 +89,7 @@ export const SharePetSheet = ({ pet, open, onOpenChange }: SharePetSheetProps) =
       <SheetContent side="bottom" className="rounded-t-2xl">
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-primary" />
+            <Share2 className="h-5 w-5 text-primary" aria-hidden="true" />
             Share {pet.pet_name}'s Info
           </SheetTitle>
           <SheetDescription>
