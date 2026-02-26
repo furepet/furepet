@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
 import {
   ArrowLeft, User, Mail, Lock, Crown, PawPrint, Bell,
   Ruler, HelpCircle, MessageSquare, Star, FileText, Shield,
   LogOut, Trash2, ChevronRight, Rainbow, Plus, Pencil, Check,
+  Sun, Moon, Monitor,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,7 +61,7 @@ const MenuRow = ({
 }) => (
   <button
     onClick={onClick}
-    className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left transition-colors ${
+    className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-3 min-h-[44px] text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
       destructive
         ? "text-destructive hover:bg-destructive/5"
         : "text-foreground hover:bg-accent"
@@ -80,6 +82,7 @@ const Settings = () => {
   const { data: pets = [] } = usePets();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { theme, setTheme } = useTheme();
 
   // Edit profile state
   const [editNameOpen, setEditNameOpen] = useState(false);
@@ -216,8 +219,8 @@ const Settings = () => {
     <div className="flex flex-col gap-4 pb-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-5 w-5" />
+        <button onClick={() => navigate(-1)} aria-label="Go back" className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <h2 className="text-xl font-semibold text-foreground">Settings & Account</h2>
       </div>
@@ -271,7 +274,7 @@ const Settings = () => {
             >
               <div className="relative h-10 w-10 shrink-0 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
                 {pet.photo_url ? (
-                  <img src={pet.photo_url} alt={pet.pet_name} className="h-10 w-10 rounded-full object-cover" />
+                  <img src={pet.photo_url} alt={`Photo of ${pet.pet_name}`} className="h-10 w-10 rounded-full object-cover" />
                 ) : (
                   <PawPrint className="h-5 w-5 text-primary" />
                 )}
@@ -312,7 +315,7 @@ const Settings = () => {
       <Card>
         <CardContent className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <Ruler className="h-5 w-5 text-muted-foreground" />
+            <Ruler className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <div>
               <p className="text-sm font-medium text-foreground">Units</p>
               <p className="text-xs text-muted-foreground">
@@ -322,8 +325,43 @@ const Settings = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Imperial</span>
-            <Switch checked={unitPref === "metric"} onCheckedChange={handleUnitToggle} />
+            <Switch checked={unitPref === "metric"} onCheckedChange={handleUnitToggle} aria-label="Toggle metric units" />
             <span className="text-xs text-muted-foreground">Metric</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            {theme === "dark" ? (
+              <Moon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            ) : theme === "light" ? (
+              <Sun className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            ) : (
+              <Monitor className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            )}
+            <div>
+              <p className="text-sm font-medium text-foreground">Appearance</p>
+              <p className="text-xs text-muted-foreground capitalize">{theme ?? "system"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+            {(["light", "system", "dark"] as const).map((t) => {
+              const Icon = t === "light" ? Sun : t === "dark" ? Moon : Monitor;
+              return (
+                <button
+                  key={t}
+                  onClick={() => setTheme(t)}
+                  aria-label={`${t} theme`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                    theme === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
