@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { PawPrint, Users, Stethoscope, MessageCircle, Heart, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -11,7 +12,7 @@ const getGreeting = () => {
 
 const Index = () => {
   const navigate = useNavigate();
-  const userName = "User"; // TODO: replace with actual user name
+  const { firstName } = useAuth();
 
   const pet = {
     name: "Buddy",
@@ -31,7 +32,7 @@ const Index = () => {
     <div className="flex flex-col gap-5">
       {/* Greeting */}
       <div>
-        <h2 className="text-xl font-semibold text-foreground">Hi {userName}!</h2>
+        <h2 className="text-xl font-semibold text-foreground">Hi {firstName || "there"}!</h2>
         <p className="text-sm text-muted-foreground">{getGreeting()} 🐾</p>
       </div>
 
