@@ -8,6 +8,7 @@ interface AuthContextType {
   firstName: string;
   onboardingCompleted: boolean;
   loading: boolean;
+  completeOnboarding: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -67,12 +68,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  const completeOnboarding = () => {
+    setOnboardingCompleted(true);
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, firstName, onboardingCompleted, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, firstName, onboardingCompleted, loading, completeOnboarding, signOut }}>
       {children}
     </AuthContext.Provider>
   );
