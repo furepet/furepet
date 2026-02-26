@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { PawPrint, Camera } from "lucide-react";
+import { NotificationPermission } from "@/components/onboarding/NotificationPermission";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -22,12 +24,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { subscribe } = usePushSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(1);
@@ -208,6 +211,12 @@ const Onboarding = () => {
 
     if (step === 3) {
       setStep(4);
+      return;
+    }
+
+    if (step === 4) {
+      // Notification permission step — skip to premium
+      setStep(5);
       return;
     }
   };
@@ -399,6 +408,14 @@ const Onboarding = () => {
               )}
             </div>
           </>
+        ) : step === 4 ? (
+          <NotificationPermission
+            onEnable={async () => {
+              await subscribe();
+              setStep(5);
+            }}
+            onSkip={() => setStep(5)}
+          />
         ) : (
           <PremiumUpsell
             saving={saving}
