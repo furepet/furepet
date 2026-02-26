@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { PawPrint, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -19,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TOTAL_STEPS = 2;
+const TOTAL_STEPS = 3;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -38,6 +40,12 @@ const Onboarding = () => {
   const [togetherSince, setTogetherSince] = useState<Date | undefined>();
   const [breed, setBreed] = useState("");
   const [microchipNumber, setMicrochipNumber] = useState("");
+
+  const [neuterSpayStatus, setNeuterSpayStatus] = useState("Unknown");
+  const [neuterSpayDate, setNeuterSpayDate] = useState<Date | undefined>();
+  const [hasInsurance, setHasInsurance] = useState(false);
+  const [insuranceCompany, setInsuranceCompany] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
 
   const [saving, setSaving] = useState(false);
 
@@ -136,6 +144,11 @@ const Onboarding = () => {
         together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
         breed: breed || null,
         microchip_number: microchipNumber.trim() || null,
+        neuter_spay_status: neuterSpayStatus,
+        neuter_spay_date: neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
+        has_insurance: hasInsurance,
+        insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
+        policy_number: hasInsurance ? policyNumber.trim() || null : null,
       });
 
       if (error) throw error;
@@ -178,12 +191,16 @@ const Onboarding = () => {
       return;
     }
 
-    if (!breed) {
-      toast({
-        title: "Breed required",
-        description: "Please select your pet's breed.",
-        variant: "destructive",
-      });
+    if (step === 2) {
+      if (!breed) {
+        toast({
+          title: "Breed required",
+          description: "Please select your pet's breed.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setStep(3);
       return;
     }
 
@@ -281,7 +298,7 @@ const Onboarding = () => {
               </div>
             </div>
           </>
-        ) : (
+        ) : step === 2 ? (
           <>
             <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">A few more details</h1>
             <p className="text-muted-foreground text-sm mb-8">Help us complete your pet profile.</p>
@@ -315,6 +332,68 @@ const Onboarding = () => {
               </div>
             </div>
           </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Health basics 🏥</h1>
+            <p className="text-muted-foreground text-sm mb-8">Just a few health-related questions.</p>
+
+            <div className="space-y-6">
+              <div>
+                <Label className="mb-3 block">Neuter / Spay Status</Label>
+                <RadioGroup value={neuterSpayStatus} onValueChange={setNeuterSpayStatus} className="flex gap-4">
+                  {["Yes", "No", "Unknown"].map((option) => (
+                    <div key={option} className="flex items-center gap-2">
+                      <RadioGroupItem value={option} id={`neuter-${option}`} />
+                      <Label htmlFor={`neuter-${option}`} className="font-normal cursor-pointer">
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {neuterSpayStatus === "Yes" && (
+                <DatePickerField
+                  label="Date of Procedure (optional)"
+                  value={neuterSpayDate}
+                  onChange={setNeuterSpayDate}
+                  placeholder="Pick a date"
+                />
+              )}
+
+              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                <Label htmlFor="insurance-toggle" className="font-normal cursor-pointer">
+                  Do you have pet insurance?
+                </Label>
+                <Switch id="insurance-toggle" checked={hasInsurance} onCheckedChange={setHasInsurance} />
+              </div>
+
+              {hasInsurance && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="insuranceCompany">Insurance Company</Label>
+                    <Input
+                      id="insuranceCompany"
+                      value={insuranceCompany}
+                      onChange={(e) => setInsuranceCompany(e.target.value)}
+                      placeholder="e.g. Healthy Paws"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="policyNumber">Policy Number</Label>
+                    <Input
+                      id="policyNumber"
+                      value={policyNumber}
+                      onChange={(e) => setPolicyNumber(e.target.value)}
+                      placeholder="e.g. HP-123456"
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -328,7 +407,7 @@ const Onboarding = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setStep(1)}
+              onClick={() => setStep(step - 1)}
               disabled={saving}
               className="h-12 text-base font-semibold"
             >
@@ -340,7 +419,7 @@ const Onboarding = () => {
               disabled={saving}
               className="h-12 text-base font-semibold"
             >
-              {saving ? "Saving…" : "Next"}
+              {saving ? "Saving…" : step === TOTAL_STEPS ? "Finish" : "Next"}
             </Button>
           </div>
         )}
