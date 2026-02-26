@@ -553,7 +553,7 @@ function DateField({ label, value, onChange }: { label: string; value: Date | un
         <PopoverTrigger asChild>
           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}>
             <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-            {value ? format(value, "PPP") : "Pick a date"}
+            {value ? format(value, "MMM d, yyyy") : "MM/DD/YYYY"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -573,7 +573,7 @@ function DateFieldStr({ label, value, onChange }: { label: string; value: string
         <PopoverTrigger asChild>
           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
             <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-            {date ? format(date, "PPP") : "Pick a date"}
+            {date ? format(date, "MMM d, yyyy") : "MM/DD/YYYY"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
