@@ -158,13 +158,18 @@ const Onboarding = () => {
 
       if (error) throw error;
 
-      await supabase
+      const { error: profileError } = await supabase
         .from("profiles")
-        .update({ onboarding_completed: true })
+        .update({
+          onboarding_completed: true,
+          subscription_status: isPremium ? "premium" : "free",
+        })
         .eq("user_id", user.id);
 
+      if (profileError) throw profileError;
+
+      // Use navigate only — no reload to avoid auth session lock conflicts
       navigate("/", { replace: true });
-      window.location.reload();
     } catch (err: any) {
       toast({ title: "Error saving", description: err.message, variant: "destructive" });
     } finally {
