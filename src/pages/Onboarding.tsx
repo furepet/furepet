@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/select";
 import { DatePickerField } from "@/components/onboarding/DatePickerField";
 import { BreedCombobox } from "@/components/onboarding/BreedCombobox";
+import { PremiumUpsell } from "@/components/onboarding/PremiumUpsell";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -112,7 +113,7 @@ const Onboarding = () => {
     img.src = nextPreviewUrl;
   };
 
-  const savePet = async () => {
+  const savePet = async (isPremium: boolean) => {
     if (!user) return;
 
     setSaving(true);
@@ -149,6 +150,7 @@ const Onboarding = () => {
         has_insurance: hasInsurance,
         insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
         policy_number: hasInsurance ? policyNumber.trim() || null : null,
+        is_premium: isPremium,
       });
 
       if (error) throw error;
@@ -204,7 +206,10 @@ const Onboarding = () => {
       return;
     }
 
-    await savePet();
+    if (step === 3) {
+      setStep(4);
+      return;
+    }
   };
 
   const progress = (step / TOTAL_STEPS) * 100;
@@ -332,7 +337,7 @@ const Onboarding = () => {
               </div>
             </div>
           </>
-        ) : (
+        ) : step === 3 ? (
           <>
             <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Health basics 🏥</h1>
             <p className="text-muted-foreground text-sm mb-8">Just a few health-related questions.</p>
@@ -394,36 +399,44 @@ const Onboarding = () => {
               )}
             </div>
           </>
+        ) : (
+          <PremiumUpsell
+            saving={saving}
+            onChoosePremium={() => savePet(true)}
+            onChooseFree={() => savePet(false)}
+          />
         )}
       </div>
 
-      <div className="sticky bottom-0 bg-background border-t border-border p-4 max-w-lg mx-auto w-full">
-        {step === 1 ? (
-          <Button type="button" onClick={handleNext} className="w-full h-12 text-base font-semibold">
-            Next
-          </Button>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setStep(step - 1)}
-              disabled={saving}
-              className="h-12 text-base font-semibold"
-            >
-              Back
+      {step < 4 && (
+        <div className="sticky bottom-0 bg-background border-t border-border p-4 max-w-lg mx-auto w-full">
+          {step === 1 ? (
+            <Button type="button" onClick={handleNext} className="w-full h-12 text-base font-semibold">
+              Next
             </Button>
-            <Button
-              type="button"
-              onClick={handleNext}
-              disabled={saving}
-              className="h-12 text-base font-semibold"
-            >
-              {saving ? "Saving…" : step === TOTAL_STEPS ? "Finish" : "Next"}
-            </Button>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(step - 1)}
+                disabled={saving}
+                className="h-12 text-base font-semibold"
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={saving}
+                className="h-12 text-base font-semibold"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
