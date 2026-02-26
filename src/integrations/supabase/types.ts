@@ -14,6 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      allergies: {
+        Row: {
+          allergen: string
+          created_at: string
+          date_identified: string | null
+          id: string
+          notes: string | null
+          pet_id: string
+          reaction: string | null
+          severity: string | null
+          type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allergen?: string
+          created_at?: string
+          date_identified?: string | null
+          id?: string
+          notes?: string | null
+          pet_id: string
+          reaction?: string | null
+          severity?: string | null
+          type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allergen?: string
+          created_at?: string
+          date_identified?: string | null
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          reaction?: string | null
+          severity?: string | null
+          type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allergies_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      behavioral_issues: {
+        Row: {
+          created_at: string
+          first_noticed: string | null
+          id: string
+          issue: string
+          notes: string | null
+          pet_id: string
+          severity: string | null
+          status: string
+          treatment_plan: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_noticed?: string | null
+          id?: string
+          issue?: string
+          notes?: string | null
+          pet_id: string
+          severity?: string | null
+          status?: string
+          treatment_plan?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          first_noticed?: string | null
+          id?: string
+          issue?: string
+          notes?: string | null
+          pet_id?: string
+          severity?: string | null
+          status?: string
+          treatment_plan?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_issues_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       breed_weight_ranges: {
         Row: {
           avg_weight_lbs: number
@@ -69,6 +169,100 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "chat_messages_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnoses: {
+        Row: {
+          created_at: string
+          date_diagnosed: string | null
+          diagnosing_vet: string | null
+          diagnosis_name: string
+          id: string
+          notes: string | null
+          pet_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_diagnosed?: string | null
+          diagnosing_vet?: string | null
+          diagnosis_name?: string
+          id?: string
+          notes?: string | null
+          pet_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_diagnosed?: string | null
+          diagnosing_vet?: string | null
+          diagnosis_name?: string
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnoses_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          pet_id: string
+          phone: string | null
+          priority: number
+          relationship: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          pet_id: string
+          phone?: string | null
+          priority?: number
+          relationship?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          pet_id?: string
+          phone?: string | null
+          priority?: number
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_contacts_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
             referencedRelation: "pets"
@@ -170,6 +364,112 @@ export type Database = {
           },
         ]
       }
+      medications: {
+        Row: {
+          created_at: string
+          dosage: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          medication_name: string
+          notes: string | null
+          pet_id: string
+          prescribing_vet: string | null
+          refill_date: string | null
+          refill_reminder_enabled: boolean
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dosage?: string | null
+          end_date?: string | null
+          frequency?: string | null
+          id?: string
+          medication_name?: string
+          notes?: string | null
+          pet_id: string
+          prescribing_vet?: string | null
+          refill_date?: string | null
+          refill_reminder_enabled?: boolean
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: string | null
+          end_date?: string | null
+          frequency?: string | null
+          id?: string
+          medication_name?: string
+          notes?: string | null
+          pet_id?: string
+          prescribing_vet?: string | null
+          refill_date?: string | null
+          refill_reminder_enabled?: boolean
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medications_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memorial: {
+        Row: {
+          created_at: string
+          favorite_memory: string | null
+          id: string
+          message_to_pet: string | null
+          pet_id: string
+          photo_urls: string[] | null
+          updated_at: string
+          user_id: string
+          what_made_special: string | null
+        }
+        Insert: {
+          created_at?: string
+          favorite_memory?: string | null
+          id?: string
+          message_to_pet?: string | null
+          pet_id: string
+          photo_urls?: string[] | null
+          updated_at?: string
+          user_id: string
+          what_made_special?: string | null
+        }
+        Update: {
+          created_at?: string
+          favorite_memory?: string | null
+          id?: string
+          message_to_pet?: string | null
+          pet_id?: string
+          photo_urls?: string[] | null
+          updated_at?: string
+          user_id?: string
+          what_made_special?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: true
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           created_at: string
@@ -252,6 +552,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      observations: {
+        Row: {
+          body_location: string | null
+          created_at: string
+          date_first_noticed: string | null
+          follow_up_date: string | null
+          id: string
+          notes: string | null
+          pet_id: string
+          photo_url: string | null
+          size_description: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_location?: string | null
+          created_at?: string
+          date_first_noticed?: string | null
+          follow_up_date?: string | null
+          id?: string
+          notes?: string | null
+          pet_id: string
+          photo_url?: string | null
+          size_description?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_location?: string | null
+          created_at?: string
+          date_first_noticed?: string | null
+          follow_up_date?: string | null
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          photo_url?: string | null
+          size_description?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observations_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
             referencedRelation: "pets"
@@ -367,6 +723,7 @@ export type Database = {
           photo_url: string | null
           policy_number: string | null
           species: string
+          status: string
           together_since: string | null
           updated_at: string
           user_id: string
@@ -393,6 +750,7 @@ export type Database = {
           photo_url?: string | null
           policy_number?: string | null
           species?: string
+          status?: string
           together_since?: string | null
           updated_at?: string
           user_id: string
@@ -419,6 +777,7 @@ export type Database = {
           photo_url?: string | null
           policy_number?: string | null
           species?: string
+          status?: string
           together_since?: string | null
           updated_at?: string
           user_id?: string
@@ -432,6 +791,8 @@ export type Database = {
           first_name: string
           id: string
           onboarding_completed: boolean
+          stripe_customer_id: string | null
+          subscription_status: string
           unit_preference: string
           updated_at: string
           user_id: string
@@ -442,6 +803,8 @@ export type Database = {
           first_name?: string
           id?: string
           onboarding_completed?: boolean
+          stripe_customer_id?: string | null
+          subscription_status?: string
           unit_preference?: string
           updated_at?: string
           user_id: string
@@ -452,6 +815,8 @@ export type Database = {
           first_name?: string
           id?: string
           onboarding_completed?: boolean
+          stripe_customer_id?: string | null
+          subscription_status?: string
           unit_preference?: string
           updated_at?: string
           user_id?: string
@@ -485,6 +850,103 @@ export type Database = {
         }
         Relationships: []
       }
+      surgeries: {
+        Row: {
+          created_at: string
+          date: string | null
+          id: string
+          outcome_notes: string | null
+          pet_id: string
+          procedure_name: string
+          reason: string | null
+          surgeon_clinic: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string | null
+          id?: string
+          outcome_notes?: string | null
+          pet_id: string
+          procedure_name?: string
+          reason?: string | null
+          surgeon_clinic?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string | null
+          id?: string
+          outcome_notes?: string | null
+          pet_id?: string
+          procedure_name?: string
+          reason?: string | null
+          surgeon_clinic?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "surgeries_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vaccines: {
+        Row: {
+          administering_vet: string | null
+          created_at: string
+          date_administered: string | null
+          id: string
+          lot_number: string | null
+          next_due_date: string | null
+          notes: string | null
+          pet_id: string
+          updated_at: string
+          user_id: string
+          vaccine_name: string
+        }
+        Insert: {
+          administering_vet?: string | null
+          created_at?: string
+          date_administered?: string | null
+          id?: string
+          lot_number?: string | null
+          next_due_date?: string | null
+          notes?: string | null
+          pet_id: string
+          updated_at?: string
+          user_id: string
+          vaccine_name?: string
+        }
+        Update: {
+          administering_vet?: string | null
+          created_at?: string
+          date_administered?: string | null
+          id?: string
+          lot_number?: string | null
+          next_due_date?: string | null
+          notes?: string | null
+          pet_id?: string
+          updated_at?: string
+          user_id?: string
+          vaccine_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vaccines_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vapid_keys: {
         Row: {
           created_at: string
@@ -505,6 +967,121 @@ export type Database = {
           public_key?: string
         }
         Relationships: []
+      }
+      village_daycare: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          facility_name: string
+          favorite_caretaker: string | null
+          friends: string[] | null
+          id: string
+          notes: string | null
+          pet_id: string
+          phone: string | null
+          started_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          facility_name?: string
+          favorite_caretaker?: string | null
+          friends?: string[] | null
+          id?: string
+          notes?: string | null
+          pet_id: string
+          phone?: string | null
+          started_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          facility_name?: string
+          favorite_caretaker?: string | null
+          friends?: string[] | null
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          phone?: string | null
+          started_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "village_daycare_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      village_groomer: {
+        Row: {
+          created_at: string
+          email: string | null
+          frequency: string | null
+          groomer_name: string | null
+          id: string
+          last_appointment_date: string | null
+          notes: string | null
+          pet_id: string
+          phone: string | null
+          preferred_services: string[] | null
+          rebook_reminder_enabled: boolean
+          salon_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          frequency?: string | null
+          groomer_name?: string | null
+          id?: string
+          last_appointment_date?: string | null
+          notes?: string | null
+          pet_id: string
+          phone?: string | null
+          preferred_services?: string[] | null
+          rebook_reminder_enabled?: boolean
+          salon_name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          frequency?: string | null
+          groomer_name?: string | null
+          id?: string
+          last_appointment_date?: string | null
+          notes?: string | null
+          pet_id?: string
+          phone?: string | null
+          preferred_services?: string[] | null
+          rebook_reminder_enabled?: boolean
+          salon_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "village_groomer_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       village_members: {
         Row: {
@@ -537,6 +1114,106 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "village_members_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      village_vet: {
+        Row: {
+          address: string | null
+          checkup_reminder_enabled: boolean
+          clinic_name: string
+          created_at: string
+          email: string | null
+          id: string
+          last_checkup_date: string | null
+          pet_id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+          vet_name: string
+        }
+        Insert: {
+          address?: string | null
+          checkup_reminder_enabled?: boolean
+          clinic_name?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_checkup_date?: string | null
+          pet_id: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+          vet_name?: string
+        }
+        Update: {
+          address?: string | null
+          checkup_reminder_enabled?: boolean
+          clinic_name?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_checkup_date?: string | null
+          pet_id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+          vet_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "village_vet_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      village_walker: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          pet_id: string
+          phone: string | null
+          started_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          pet_id: string
+          phone?: string | null
+          started_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          pet_id?: string
+          phone?: string | null
+          started_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "village_walker_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
             referencedRelation: "pets"
