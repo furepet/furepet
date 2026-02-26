@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePets } from "@/hooks/usePets";
 import { PetSwitcher } from "@/components/home/PetSwitcher";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
-import { differenceInYears, differenceInMonths, parseISO } from "date-fns";
+import { differenceInYears, differenceInMonths, parseISO, isToday } from "date-fns";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -29,9 +29,14 @@ const getGreeting = () => {
 const formatAge = (dob: string | null): string | null => {
   if (!dob) return null;
   const birthDate = parseISO(dob);
-  const years = differenceInYears(new Date(), birthDate);
+  // Birthday easter egg
+  const todayDate = new Date();
+  if (birthDate.getMonth() === todayDate.getMonth() && birthDate.getDate() === todayDate.getDate()) {
+    return "🎂 Happy Birthday!";
+  }
+  const years = differenceInYears(todayDate, birthDate);
   if (years >= 1) return `${years} year${years !== 1 ? "s" : ""} old`;
-  const months = differenceInMonths(new Date(), birthDate);
+  const months = differenceInMonths(todayDate, birthDate);
   return months >= 1 ? `${months} month${months !== 1 ? "s" : ""} old` : "< 1 month old";
 };
 

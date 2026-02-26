@@ -96,3 +96,23 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
+
+@layer utilities {
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+  }
+}
+
+/* Card press effect */
+.cursor-pointer[class*="card"]:active,
+div[class*="Card"]:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease-out;
+}
