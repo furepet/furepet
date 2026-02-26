@@ -16,6 +16,7 @@ import FirstAid from "./pages/FirstAid";
 import AiChat from "./pages/AiChat";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import NotificationSettings from "./pages/NotificationSettings";
 import SignUp from "./pages/auth/SignUp";
 import Login from "./pages/auth/Login";
 import VerifyEmail from "./pages/auth/VerifyEmail";
@@ -71,6 +72,7 @@ const AppRoutes = () => {
           <Route path="/more" element={<More />} />
           <Route path="/more/first-aid" element={<FirstAid />} />
           <Route path="/more/ai-chat" element={<AiChat />} />
+          <Route path="/more/notifications" element={<NotificationSettings />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

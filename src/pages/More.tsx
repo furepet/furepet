@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import {
   MessageCircle, Heart, Settings, HelpCircle, Mail, Star,
-  FileText, LogOut, Trash2, Lock, ChevronRight,
+  FileText, LogOut, Trash2, Lock, ChevronRight, Bell,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ const More = () => {
   };
 
   const menuItems = [
+    { label: "Notifications", icon: Bell, action: () => navigate("/more/notifications") },
     { label: "Settings & Account", icon: Settings, action: () => {} },
     { label: "Help & FAQ", icon: HelpCircle, action: () => {} },
     { label: "Contact Support", icon: Mail, action: () => {} },
