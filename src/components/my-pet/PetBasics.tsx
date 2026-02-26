@@ -1,8 +1,9 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { format, parseISO, differenceInYears, differenceInMonths } from "date-fns";
-import { Camera, PawPrint, Pencil, X } from "lucide-react";
+import { Camera, PawPrint, Pencil, X, Heart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MarkAsPassedDialog, RestoreProfileDialog } from "./MemorialDialogs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -45,6 +46,13 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [passedDialogOpen, setPassedDialogOpen] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+
+  const isDeceased = pet.is_deceased ?? false;
+  const canRestore = isDeceased && pet.deceased_at
+    ? (Date.now() - new Date(pet.deceased_at).getTime()) / (1000 * 60 * 60 * 24) <= 30
+    : false;
 
   // edit form state
   const [petName, setPetName] = useState(pet.pet_name);
@@ -215,13 +223,15 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
               )}
             </div>
           </div>
-          <button
-            onClick={() => setEditing(true)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Edit pet details"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
+          {!isDeceased && (
+            <button
+              onClick={() => setEditing(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              aria-label="Edit pet details"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Detail card */}
@@ -241,6 +251,28 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
             ))}
           </CardContent>
         </Card>
+
+        {/* Mark as Passed / Restore */}
+        {!isDeceased && (
+          <button
+            onClick={() => setPassedDialogOpen(true)}
+            className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors py-2"
+          >
+            <Heart className="h-3 w-3" />
+            Mark as Passed Away
+          </button>
+        )}
+        {canRestore && (
+          <button
+            onClick={() => setRestoreDialogOpen(true)}
+            className="flex items-center justify-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors py-2"
+          >
+            Restore active profile
+          </button>
+        )}
+
+        <MarkAsPassedDialog pet={pet} open={passedDialogOpen} onOpenChange={setPassedDialogOpen} />
+        <RestoreProfileDialog pet={pet} open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen} />
       </div>
     );
   }

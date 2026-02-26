@@ -261,10 +261,15 @@ export type Database = {
           breed_description: string | null
           created_at: string
           date_of_birth: string | null
+          date_of_passing: string | null
+          deceased_at: string | null
           has_insurance: boolean
           id: string
           insurance_company: string | null
+          is_deceased: boolean
           is_premium: boolean
+          memorial_memories: Json | null
+          memorial_photos: string[] | null
           microchip_number: string | null
           neuter_spay_date: string | null
           neuter_spay_status: string
@@ -282,10 +287,15 @@ export type Database = {
           breed_description?: string | null
           created_at?: string
           date_of_birth?: string | null
+          date_of_passing?: string | null
+          deceased_at?: string | null
           has_insurance?: boolean
           id?: string
           insurance_company?: string | null
+          is_deceased?: boolean
           is_premium?: boolean
+          memorial_memories?: Json | null
+          memorial_photos?: string[] | null
           microchip_number?: string | null
           neuter_spay_date?: string | null
           neuter_spay_status?: string
@@ -303,10 +313,15 @@ export type Database = {
           breed_description?: string | null
           created_at?: string
           date_of_birth?: string | null
+          date_of_passing?: string | null
+          deceased_at?: string | null
           has_insurance?: boolean
           id?: string
           insurance_company?: string | null
+          is_deceased?: boolean
           is_premium?: boolean
+          memorial_memories?: Json | null
+          memorial_photos?: string[] | null
           microchip_number?: string | null
           neuter_spay_date?: string | null
           neuter_spay_status?: string
