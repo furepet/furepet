@@ -262,7 +262,7 @@ const Settings = () => {
       </Card>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <MenuRow icon={Pencil} label="Edit Profile" desc="Change your first name" onClick={() => setEditNameOpen(true)} />
+        <MenuRow icon={Pencil} label="Edit Profile" desc="Name, email & profile details" onClick={() => setEditNameOpen(true)} />
         <Separator />
         <MenuRow icon={Lock} label="Change Password" onClick={() => setChangePwOpen(true)} />
         <Separator />
