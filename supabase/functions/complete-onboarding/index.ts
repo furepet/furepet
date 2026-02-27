@@ -20,13 +20,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
+    // Auth client to verify the user
+    const authClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+
+    // Service role client to bypass RLS for inserts/updates
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
     if (authError || !authUser) {
       console.error("Auth error:", authError);
