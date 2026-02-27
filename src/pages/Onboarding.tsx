@@ -25,44 +25,46 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const TOTAL_STEPS = 5;
-const SAVE_TIMEOUT_MS = 10000;
-
-const isAuthLockError = (error: unknown) => {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : JSON.stringify(error ?? "");
-
-  return /lock was not released within 5000ms|lock was stolen by another request/i.test(message);
-};
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const withLockRetry = async <T,>(operation: () => Promise<T>, maxRetries = 2): Promise<T> => {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-
-      if (!isAuthLockError(error) || attempt === maxRetries) {
-        throw error;
-      }
-
-      await wait(200 * (attempt + 1));
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error("Lock retry failed");
-};
+const buildPetPayload = (
+  userId: string,
+  petName: string,
+  nickname: string,
+  species: string,
+  dateOfBirth: Date | undefined,
+  togetherSince: Date | undefined,
+  breed: string,
+  microchipNumber: string,
+  neuterSpayStatus: string,
+  neuterSpayDate: Date | undefined,
+  hasInsurance: boolean,
+  insuranceCompany: string,
+  policyNumber: string,
+  isPremium: boolean,
+) => ({
+  user_id: userId,
+  pet_name: petName.trim(),
+  nickname: nickname.trim() || null,
+  species,
+  photo_url: null,
+  date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+  together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
+  breed: breed || null,
+  microchip_number: microchipNumber.trim() || null,
+  neuter_spay_status: neuterSpayStatus,
+  neuter_spay_date:
+    neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
+  has_insurance: hasInsurance,
+  insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
+  policy_number: hasInsurance ? policyNumber.trim() || null : null,
+  is_premium: isPremium,
+});
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { user, completeOnboarding } = useAuth();
+  const { user, session, completeOnboarding } = useAuth();
   const { toast } = useToast();
   const { subscribe } = usePushSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,20 +102,12 @@ const Onboarding = () => {
     if (!file) return;
 
     if (!["image/jpeg", "image/png"].includes(file.type)) {
-      toast({
-        title: "Invalid format",
-        description: "Please upload a JPG or PNG image.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid format", description: "Please upload a JPG or PNG image.", variant: "destructive" });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Maximum file size is 5MB.",
-        variant: "destructive",
-      });
+      toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" });
       return;
     }
 
@@ -123,31 +117,78 @@ const Onboarding = () => {
     img.onload = () => {
       if (img.width < 400 || img.height < 400) {
         URL.revokeObjectURL(nextPreviewUrl);
-        toast({
-          title: "Image too small",
-          description: "Minimum dimensions are 400×400px.",
-          variant: "destructive",
-        });
+        toast({ title: "Image too small", description: "Minimum dimensions are 400×400px.", variant: "destructive" });
         return;
       }
-
       setPhotoFile(file);
-      setPhotoPreview((previousUrl) => {
-        if (previousUrl) URL.revokeObjectURL(previousUrl);
+      setPhotoPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
         return nextPreviewUrl;
       });
     };
 
     img.onerror = () => {
       URL.revokeObjectURL(nextPreviewUrl);
-      toast({
-        title: "Image error",
-        description: "Unable to load that image. Please try another one.",
-        variant: "destructive",
-      });
+      toast({ title: "Image error", description: "Unable to load that image.", variant: "destructive" });
     };
 
     img.src = nextPreviewUrl;
+  };
+
+  /** Try saving via the Supabase JS client */
+  const saveViaClient = async (petPayload: any, isPremium: boolean) => {
+    console.log("Onboarding: attempting save via client SDK");
+
+    const { data: petRecord, error: petError } = await supabase
+      .from("pets")
+      .insert(petPayload)
+      .select("id")
+      .single();
+
+    if (petError) {
+      console.error("Client pet insert error:", JSON.stringify(petError));
+      throw new Error(petError.message);
+    }
+
+    console.log("Onboarding: pet created via client, id:", petRecord?.id);
+
+    // Profile update (non-blocking)
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        onboarding_completed: true,
+        subscription_status: isPremium ? "premium" : "free",
+      })
+      .eq("user_id", petPayload.user_id);
+
+    if (profileError) {
+      console.warn("Client profile update error:", JSON.stringify(profileError));
+    }
+
+    return petRecord?.id;
+  };
+
+  /** Fallback: save via edge function to bypass any client-side auth lock issues */
+  const saveViaEdgeFunction = async (petPayload: Record<string, any>, isPremium: boolean) => {
+    console.log("Onboarding: attempting save via edge function fallback");
+
+    const { user_id, ...petWithoutUserId } = petPayload;
+
+    const { data, error } = await supabase.functions.invoke("save-onboarding", {
+      body: { pet: petWithoutUserId, isPremium },
+    });
+
+    if (error) {
+      console.error("Edge function error:", error);
+      throw new Error(typeof error === "string" ? error : error.message || "Edge function failed");
+    }
+
+    if (!data?.success) {
+      throw new Error(data?.error || "Edge function returned failure");
+    }
+
+    console.log("Onboarding: pet created via edge function, id:", data.petId);
+    return data.petId;
   };
 
   const savePet = async (isPremium: boolean) => {
@@ -158,138 +199,104 @@ const Onboarding = () => {
 
     setSaving(true);
 
-    const finishOnboardingAndGoHome = () => {
-      completeOnboarding();
-      navigate("/", { replace: true });
-    };
+    const petPayload = buildPetPayload(
+      user.id, petName, nickname, species, dateOfBirth, togetherSince,
+      breed, microchipNumber, neuterSpayStatus, neuterSpayDate,
+      hasInsurance, insuranceCompany, policyNumber, isPremium,
+    );
 
+    let petId: string | undefined;
+    let savedSuccessfully = false;
+
+    // Attempt 1: client SDK
     try {
-      console.log("Onboarding: inserting pet for user", user.id);
+      petId = await saveViaClient(petPayload, isPremium);
+      savedSuccessfully = true;
+    } catch (err) {
+      console.warn("Onboarding: client save failed, will retry…", err);
+    }
 
-      const { data: petRecord, error: petError } = await supabase
-        .from("pets")
-        .insert({
-          user_id: user.id,
-          pet_name: petName.trim(),
-          nickname: nickname.trim() || null,
-          species,
-          photo_url: null,
-          date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
-          together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
-          breed: breed || null,
-          microchip_number: microchipNumber.trim() || null,
-          neuter_spay_status: neuterSpayStatus,
-          neuter_spay_date:
-            neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
-          has_insurance: hasInsurance,
-          insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
-          policy_number: hasInsurance ? policyNumber.trim() || null : null,
-          is_premium: isPremium,
-        })
-        .select("id")
-        .single();
-
-      if (petError) {
-        console.error("Onboarding pet insert error:", JSON.stringify(petError));
-        throw petError;
+    // Attempt 2: retry client after short delay
+    if (!savedSuccessfully) {
+      await wait(2000);
+      try {
+        petId = await saveViaClient(petPayload, isPremium);
+        savedSuccessfully = true;
+      } catch (err) {
+        console.warn("Onboarding: client retry failed, falling back to edge function…", err);
       }
+    }
 
-      console.log("Onboarding: pet created with id", petRecord?.id);
-
-      // Update profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_completed: true,
-          subscription_status: isPremium ? "premium" : "free",
-        })
-        .eq("user_id", user.id);
-
-      if (profileError) {
-        console.error("Onboarding profile update error:", JSON.stringify(profileError));
-      } else {
-        console.log("Onboarding: profile updated successfully");
+    // Attempt 3: edge function fallback
+    if (!savedSuccessfully) {
+      try {
+        petId = await saveViaEdgeFunction(petPayload, isPremium);
+        savedSuccessfully = true;
+      } catch (err) {
+        console.error("Onboarding: edge function fallback failed:", err);
+        toast({
+          title: "Unable to save",
+          description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
       }
+    }
 
-      // Upload photo if present
-      if (photoFile && petRecord?.id) {
+    // Upload photo if we have one and a pet ID
+    if (photoFile && petId) {
+      try {
         const ext = photoFile.name.split(".").pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("pet-photos")
           .upload(path, photoFile, { contentType: photoFile.type });
 
-        if (uploadError) {
-          console.warn("Photo upload failed:", uploadError.message);
-        } else {
+        if (!uploadError) {
           const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
           await supabase
             .from("pets")
             .update({ photo_url: urlData.publicUrl })
-            .eq("id", petRecord.id)
+            .eq("id", petId)
             .eq("user_id", user.id);
+        } else {
+          console.warn("Photo upload failed:", uploadError.message);
         }
+      } catch (photoErr) {
+        console.warn("Photo upload error (non-blocking):", photoErr);
       }
-
-      finishOnboardingAndGoHome();
-    } catch (err: any) {
-      console.error("Onboarding save error:", err);
-      toast({
-        title: "Error saving",
-        description: err?.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-      setSaving(false);
     }
+
+    completeOnboarding();
+    navigate("/", { replace: true });
   };
 
   const handleNext = async () => {
     if (step === 1) {
       if (!petName.trim()) {
-        toast({
-          title: "Pet name required",
-          description: "Please enter your pet's name.",
-          variant: "destructive",
-        });
+        toast({ title: "Pet name required", description: "Please enter your pet's name.", variant: "destructive" });
         return;
       }
-
       if (!species) {
-        toast({
-          title: "Species required",
-          description: "Please select your pet's species.",
-          variant: "destructive",
-        });
+        toast({ title: "Species required", description: "Please select your pet's species.", variant: "destructive" });
         return;
       }
-
       setStep(2);
       return;
     }
 
     if (step === 2) {
       if (!breed) {
-        toast({
-          title: "Breed required",
-          description: "Please select your pet's breed.",
-          variant: "destructive",
-        });
+        toast({ title: "Breed required", description: "Please select your pet's breed.", variant: "destructive" });
         return;
       }
       setStep(3);
       return;
     }
 
-    if (step === 3) {
-      setStep(4);
-      return;
-    }
-
-    if (step === 4) {
-      // Notification permission step — skip to premium
-      setStep(5);
-      return;
-    }
+    if (step === 3) { setStep(4); return; }
+    if (step === 4) { setStep(5); return; }
   };
 
   const progress = (step / TOTAL_STEPS) * 100;
@@ -328,53 +335,27 @@ const Onboarding = () => {
               </button>
 
               {photoPreview && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-2 text-xs text-primary font-medium hover:underline"
-                >
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-2 text-xs text-primary font-medium hover:underline">
                   Change Photo
                 </button>
               )}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png"
-                className="hidden"
-                onChange={handlePhotoSelect}
-              />
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handlePhotoSelect} />
             </div>
 
             <div className="space-y-5">
               <div>
                 <Label htmlFor="petName">Pet's Full Name *</Label>
-                <Input
-                  id="petName"
-                  value={petName}
-                  onChange={(e) => setPetName(e.target.value)}
-                  placeholder="e.g. Buddy"
-                  className="mt-1.5"
-                />
+                <Input id="petName" value={petName} onChange={(e) => setPetName(e.target.value)} placeholder="e.g. Buddy" className="mt-1.5" />
               </div>
-
               <div>
                 <Label htmlFor="nickname">Nickname(s)</Label>
-                <Input
-                  id="nickname"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="e.g. Bud, Little Bear"
-                  className="mt-1.5"
-                />
+                <Input id="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="e.g. Bud, Little Bear" className="mt-1.5" />
               </div>
-
               <div>
                 <Label>Species *</Label>
                 <Select value={species} onValueChange={setSpecies}>
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="Select species" />
-                  </SelectTrigger>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select species" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Dog">Dog</SelectItem>
                     <SelectItem value="Cat">Cat</SelectItem>
@@ -387,33 +368,13 @@ const Onboarding = () => {
           <>
             <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">A few more details</h1>
             <p className="text-muted-foreground text-sm mb-8">Help us complete your pet profile.</p>
-
             <div className="space-y-5">
-              <DatePickerField
-                label="Date of Birth"
-                value={dateOfBirth}
-                onChange={setDateOfBirth}
-                placeholder="Pick a date"
-              />
-
-              <DatePickerField
-                label="When did your pet join your family?"
-                value={togetherSince}
-                onChange={setTogetherSince}
-                placeholder="Pick a date"
-              />
-
+              <DatePickerField label="Date of Birth" value={dateOfBirth} onChange={setDateOfBirth} placeholder="Pick a date" />
+              <DatePickerField label="When did your pet join your family?" value={togetherSince} onChange={setTogetherSince} placeholder="Pick a date" />
               <BreedCombobox species={species} value={breed} onChange={setBreed} />
-
               <div>
                 <Label htmlFor="microchipNumber">Microchip Number (optional)</Label>
-                <Input
-                  id="microchipNumber"
-                  value={microchipNumber}
-                  onChange={(e) => setMicrochipNumber(e.target.value)}
-                  placeholder="Enter microchip number"
-                  className="mt-1.5"
-                />
+                <Input id="microchipNumber" value={microchipNumber} onChange={(e) => setMicrochipNumber(e.target.value)} placeholder="Enter microchip number" className="mt-1.5" />
               </div>
             </div>
           </>
@@ -421,7 +382,6 @@ const Onboarding = () => {
           <>
             <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Health basics 🏥</h1>
             <p className="text-muted-foreground text-sm mb-8">Just a few health-related questions.</p>
-
             <div className="space-y-6">
               <div>
                 <Label className="mb-3 block">Neuter / Spay Status</Label>
@@ -429,51 +389,27 @@ const Onboarding = () => {
                   {["Yes", "No", "Unknown"].map((option) => (
                     <div key={option} className="flex items-center gap-2">
                       <RadioGroupItem value={option} id={`neuter-${option}`} />
-                      <Label htmlFor={`neuter-${option}`} className="font-normal cursor-pointer">
-                        {option}
-                      </Label>
+                      <Label htmlFor={`neuter-${option}`} className="font-normal cursor-pointer">{option}</Label>
                     </div>
                   ))}
                 </RadioGroup>
               </div>
-
               {neuterSpayStatus === "Yes" && (
-                <DatePickerField
-                  label="Date of Procedure (optional)"
-                  value={neuterSpayDate}
-                  onChange={setNeuterSpayDate}
-                  placeholder="Pick a date"
-                />
+                <DatePickerField label="Date of Procedure (optional)" value={neuterSpayDate} onChange={setNeuterSpayDate} placeholder="Pick a date" />
               )}
-
               <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                <Label htmlFor="insurance-toggle" className="font-normal cursor-pointer">
-                  Do you have pet insurance?
-                </Label>
+                <Label htmlFor="insurance-toggle" className="font-normal cursor-pointer">Do you have pet insurance?</Label>
                 <Switch id="insurance-toggle" checked={hasInsurance} onCheckedChange={setHasInsurance} />
               </div>
-
               {hasInsurance && (
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="insuranceCompany">Insurance Company</Label>
-                    <Input
-                      id="insuranceCompany"
-                      value={insuranceCompany}
-                      onChange={(e) => setInsuranceCompany(e.target.value)}
-                      placeholder="e.g. Healthy Paws"
-                      className="mt-1.5"
-                    />
+                    <Input id="insuranceCompany" value={insuranceCompany} onChange={(e) => setInsuranceCompany(e.target.value)} placeholder="e.g. Healthy Paws" className="mt-1.5" />
                   </div>
                   <div>
                     <Label htmlFor="policyNumber">Policy Number</Label>
-                    <Input
-                      id="policyNumber"
-                      value={policyNumber}
-                      onChange={(e) => setPolicyNumber(e.target.value)}
-                      placeholder="e.g. HP-123456"
-                      className="mt-1.5"
-                    />
+                    <Input id="policyNumber" value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} placeholder="e.g. HP-123456" className="mt-1.5" />
                   </div>
                 </div>
               )}
@@ -481,46 +417,22 @@ const Onboarding = () => {
           </>
         ) : step === 4 ? (
           <NotificationPermission
-            onEnable={async () => {
-              await subscribe();
-              setStep(5);
-            }}
+            onEnable={async () => { await subscribe(); setStep(5); }}
             onSkip={() => setStep(5)}
           />
         ) : (
-          <PremiumUpsell
-            saving={saving}
-            onChoosePremium={() => savePet(true)}
-            onChooseFree={() => savePet(false)}
-          />
+          <PremiumUpsell saving={saving} onChoosePremium={() => savePet(true)} onChooseFree={() => savePet(false)} />
         )}
       </div>
 
       {step < 4 && (
         <div className="sticky bottom-0 bg-background border-t border-border p-4 max-w-lg mx-auto w-full">
           {step === 1 ? (
-            <Button type="button" onClick={handleNext} className="w-full h-12 text-base font-semibold">
-              Next
-            </Button>
+            <Button type="button" onClick={handleNext} className="w-full h-12 text-base font-semibold">Next</Button>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(step - 1)}
-                disabled={saving}
-                className="h-12 text-base font-semibold"
-              >
-                Back
-              </Button>
-              <Button
-                type="button"
-                onClick={handleNext}
-                disabled={saving}
-                className="h-12 text-base font-semibold"
-              >
-                Next
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setStep(step - 1)} disabled={saving} className="h-12 text-base font-semibold">Back</Button>
+              <Button type="button" onClick={handleNext} disabled={saving} className="h-12 text-base font-semibold">Next</Button>
             </div>
           )}
         </div>
@@ -530,4 +442,3 @@ const Onboarding = () => {
 };
 
 export default Onboarding;
-
