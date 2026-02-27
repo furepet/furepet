@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const TOTAL_STEPS = 5;
-const SAVE_TIMEOUT_MS = 3000;
+const SAVE_TIMEOUT_MS = 10000;
 
 const isAuthLockError = (error: unknown) => {
   const message =
@@ -163,111 +163,76 @@ const Onboarding = () => {
       navigate("/", { replace: true });
     };
 
-    let timeoutId: number | undefined;
-
     try {
-      const saveOperation = async () => {
-        const { data: petRecord, error: petError } = await withLockRetry(async () =>
-          await supabase
-            .from("pets")
-            .insert({
-              user_id: user.id,
-              pet_name: petName.trim(),
-              nickname: nickname.trim() || null,
-              species,
-              photo_url: null,
-              date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
-              together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
-              breed: breed || null,
-              microchip_number: microchipNumber.trim() || null,
-              neuter_spay_status: neuterSpayStatus,
-              neuter_spay_date:
-                neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
-              has_insurance: hasInsurance,
-              insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
-              policy_number: hasInsurance ? policyNumber.trim() || null : null,
-              is_premium: isPremium,
-            })
-            .select("id")
-            .single()
-        );
+      console.log("Onboarding: inserting pet for user", user.id);
 
-        if (petError) {
-          console.error("Onboarding pet save failed:", petError);
-          throw petError;
-        }
+      const { data: petRecord, error: petError } = await supabase
+        .from("pets")
+        .insert({
+          user_id: user.id,
+          pet_name: petName.trim(),
+          nickname: nickname.trim() || null,
+          species,
+          photo_url: null,
+          date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+          together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
+          breed: breed || null,
+          microchip_number: microchipNumber.trim() || null,
+          neuter_spay_status: neuterSpayStatus,
+          neuter_spay_date:
+            neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
+          has_insurance: hasInsurance,
+          insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
+          policy_number: hasInsurance ? policyNumber.trim() || null : null,
+          is_premium: isPremium,
+        })
+        .select("id")
+        .single();
 
-        const { error: profileError } = await withLockRetry(async () =>
-          await supabase
-            .from("profiles")
-            .upsert(
-              {
-                user_id: user.id,
-                onboarding_completed: true,
-                subscription_status: isPremium ? "premium" : "free",
-              },
-              { onConflict: "user_id" }
-            )
-        );
+      if (petError) {
+        console.error("Onboarding pet insert error:", JSON.stringify(petError));
+        throw petError;
+      }
 
-        if (profileError) {
-          console.error("Failed to persist onboarding_completed in profile:", profileError);
-        }
+      console.log("Onboarding: pet created with id", petRecord?.id);
 
-        if (!photoFile) return;
+      // Update profile
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          subscription_status: isPremium ? "premium" : "free",
+        })
+        .eq("user_id", user.id);
 
+      if (profileError) {
+        console.error("Onboarding profile update error:", JSON.stringify(profileError));
+      } else {
+        console.log("Onboarding: profile updated successfully");
+      }
+
+      // Upload photo if present
+      if (photoFile && petRecord?.id) {
         const ext = photoFile.name.split(".").pop();
         const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await withLockRetry(() =>
-          supabase.storage.from("pet-photos").upload(path, photoFile, { contentType: photoFile.type })
-        );
+        const { error: uploadError } = await supabase.storage
+          .from("pet-photos")
+          .upload(path, photoFile, { contentType: photoFile.type });
 
         if (uploadError) {
-          console.warn("Pet was created but photo upload failed:", uploadError.message);
-          return;
-        }
-
-        const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
-
-        if (!petRecord?.id) {
-          console.error("Pet photo update skipped because pet ID was not returned.");
-          return;
-        }
-
-        const { error: photoUpdateError } = await withLockRetry(async () =>
+          console.warn("Photo upload failed:", uploadError.message);
+        } else {
+          const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
           await supabase
             .from("pets")
             .update({ photo_url: urlData.publicUrl })
             .eq("id", petRecord.id)
-            .eq("user_id", user.id)
-        );
-
-        if (photoUpdateError) {
-          console.warn("Pet was created but photo update failed:", photoUpdateError.message);
+            .eq("user_id", user.id);
         }
-      };
-
-      await Promise.race([
-        saveOperation(),
-        new Promise<never>((_, reject) => {
-          timeoutId = window.setTimeout(() => reject(new Error("ONBOARDING_SAVE_TIMEOUT")), SAVE_TIMEOUT_MS);
-        }),
-      ]);
+      }
 
       finishOnboardingAndGoHome();
     } catch (err: any) {
-      const isTimeout = err?.message === "ONBOARDING_SAVE_TIMEOUT";
-
-      if (isTimeout || isAuthLockError(err)) {
-        console.warn("Onboarding save fallback:", err);
-        toast({
-          title: "Finishing setup in background",
-          description: "Taking you to your dashboard now.",
-        });
-        finishOnboardingAndGoHome();
-        return;
-      }
-
       console.error("Onboarding save error:", err);
       toast({
         title: "Error saving",
@@ -275,10 +240,6 @@ const Onboarding = () => {
         variant: "destructive",
       });
       setSaving(false);
-    } finally {
-      if (timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
     }
   };
 
