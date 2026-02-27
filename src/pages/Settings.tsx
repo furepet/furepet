@@ -89,6 +89,10 @@ const Settings = () => {
   const [newName, setNewName] = useState(firstName);
   const [savingName, setSavingName] = useState(false);
 
+  // Change email state
+  const [newEmail, setNewEmail] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+
   // Change password state
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -136,6 +140,22 @@ const Settings = () => {
       setEditNameOpen(false);
       // Force reload to update AuthContext
       window.location.reload();
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim() || !newEmail.includes("@")) {
+      toast({ title: "Invalid email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    setSavingEmail(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Confirmation sent", description: "Check your new email for a confirmation link." });
+      setNewEmail("");
     }
   };
 
@@ -206,7 +226,7 @@ const Settings = () => {
       setDeleteOpen(false);
       toast({
         title: "Account scheduled for deletion",
-        description: "Your account will be permanently deleted in 30 days. Contact support@furepet.com to cancel.",
+        description: "Your account will be permanently deleted in 30 days. Contact hello@furepet.com to cancel.",
       });
       await signOut();
     }
@@ -374,8 +394,8 @@ const Settings = () => {
         <MenuRow
           icon={MessageSquare}
           label="Contact Support"
-          desc="support@furepet.com"
-          onClick={() => window.open("mailto:support@furepet.com", "_blank")}
+          desc="hello@furepet.com"
+          onClick={() => window.open("mailto:hello@furepet.com", "_blank")}
         />
         <Separator />
         <MenuRow icon={Star} label="Rate FurePET" onClick={() => {}} />
@@ -417,7 +437,7 @@ const Settings = () => {
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
               <Label>First Name</Label>
               <Input
@@ -427,10 +447,34 @@ const Settings = () => {
                 maxLength={50}
               />
             </div>
+            <Separator />
+            <div>
+              <Label>Email Address</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">{user?.email}</p>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="New email address"
+                  className="flex-1"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleChangeEmail}
+                  disabled={savingEmail || !newEmail.trim()}
+                  className="shrink-0"
+                >
+                  {savingEmail ? "Sending…" : "Change"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">A confirmation link will be sent to your new email.</p>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={handleSaveName} disabled={savingName || !newName.trim()} className="w-full">
-              {savingName ? "Saving…" : "Save"}
+              {savingName ? "Saving…" : "Save Name"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -483,7 +527,7 @@ const Settings = () => {
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete your account and all pet data. This cannot be undone.
-              Your account will be recoverable for 30 days — contact support@furepet.com if you change your mind.
+              Your account will be recoverable for 30 days — contact hello@furepet.com if you change your mind.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="px-1">

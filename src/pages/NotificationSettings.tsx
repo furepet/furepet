@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bell, BellOff } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -11,14 +11,18 @@ import {
   useUpsertNotificationPreferences,
 } from "@/hooks/useNotifications";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { usePets } from "@/hooks/usePets";
 import { useToast } from "@/hooks/use-toast";
 
 const NotificationSettings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: prefs, isLoading } = useNotificationPreferences();
+  const { data: prefs, isLoading, isError } = useNotificationPreferences();
   const upsert = useUpsertNotificationPreferences();
   const { subscribe, permission, isSupported } = usePushSubscription();
+  const { data: pets = [] } = usePets();
+
+  const isPremium = pets.some((p) => p.is_premium);
 
   const [form, setForm] = useState({
     enabled: true,
@@ -47,12 +51,14 @@ const NotificationSettings = () => {
   }, [prefs]);
 
   const handleToggle = (key: keyof typeof form) => (checked: boolean) => {
+    if (!isPremium) return;
     const updated = { ...form, [key]: checked };
     setForm(updated);
     upsert.mutate(updated);
   };
 
   const handleTimeChange = (key: "quiet_hours_start" | "quiet_hours_end", val: string) => {
+    if (!isPremium) return;
     const updated = { ...form, [key]: val };
     setForm(updated);
     upsert.mutate(updated);
@@ -93,8 +99,21 @@ const NotificationSettings = () => {
         <h2 className="text-xl font-semibold text-foreground">Notifications</h2>
       </div>
 
+      {/* Premium gate */}
+      {!isPremium && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex items-center gap-3 p-4">
+            <Lock className="h-5 w-5 text-amber-600" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Premium Feature</p>
+              <p className="text-xs text-muted-foreground">Notification reminders are available on the Premium plan.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Push permission */}
-      {isSupported && permission !== "granted" && (
+      {isSupported && permission !== "granted" && isPremium && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="flex items-center gap-3 p-4">
             <Bell className="h-5 w-5 text-primary" />
@@ -117,7 +136,7 @@ const NotificationSettings = () => {
               <p className="text-xs text-muted-foreground">{form.enabled ? "On" : "Off"}</p>
             </div>
           </div>
-          <Switch checked={form.enabled} onCheckedChange={handleToggle("enabled")} />
+          <Switch checked={form.enabled} onCheckedChange={handleToggle("enabled")} disabled={!isPremium} />
         </CardContent>
       </Card>
 
@@ -125,7 +144,7 @@ const NotificationSettings = () => {
       {form.enabled && (
         <div className="flex flex-col gap-2">
           {toggles.map((t) => (
-            <Card key={t.key}>
+            <Card key={t.key} className={!isPremium ? "opacity-60" : ""}>
               <CardContent className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t.label}</p>
@@ -134,6 +153,7 @@ const NotificationSettings = () => {
                 <Switch
                   checked={form[t.key]}
                   onCheckedChange={handleToggle(t.key)}
+                  disabled={!isPremium}
                 />
               </CardContent>
             </Card>
@@ -143,7 +163,7 @@ const NotificationSettings = () => {
 
       {/* Quiet hours */}
       {form.enabled && (
-        <Card>
+        <Card className={!isPremium ? "opacity-60" : ""}>
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-semibold text-foreground">Quiet hours</p>
             <p className="text-xs text-muted-foreground">No notifications during these hours</p>
@@ -155,6 +175,7 @@ const NotificationSettings = () => {
                   value={form.quiet_hours_start}
                   onChange={(e) => handleTimeChange("quiet_hours_start", e.target.value)}
                   className="mt-1"
+                  disabled={!isPremium}
                 />
               </div>
               <div>
@@ -164,6 +185,7 @@ const NotificationSettings = () => {
                   value={form.quiet_hours_end}
                   onChange={(e) => handleTimeChange("quiet_hours_end", e.target.value)}
                   className="mt-1"
+                  disabled={!isPremium}
                 />
               </div>
             </div>
