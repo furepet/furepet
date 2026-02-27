@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   PawPrint,
@@ -13,6 +13,7 @@ import {
   Rainbow,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePets } from "@/hooks/usePets";
 import { PetSwitcher } from "@/components/home/PetSwitcher";
@@ -47,6 +48,13 @@ const Index = () => {
 
   const [activePetId, setActivePetId] = useState<string | null>(null);
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = setTimeout(() => setLoadingTimedOut(true), 3000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   const activePet = useMemo(() => {
     if (pets.length === 0) return null;
@@ -64,7 +72,7 @@ const Index = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !loadingTimedOut) {
     return (
       <div className="flex flex-col gap-5 animate-pulse">
         <div className="h-6 w-40 rounded bg-muted" />
@@ -75,6 +83,26 @@ const Index = () => {
             <div key={i} className="h-16 rounded-xl bg-muted" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (pets.length === 0) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">
+            Hi {firstName || "there"}!
+          </h1>
+          <p className="text-sm text-muted-foreground">{getGreeting()} 🐾</p>
+        </div>
+        <EmptyState
+          icon={PawPrint}
+          title="No pets found"
+          description="Add your first pet to get started!"
+          actionLabel="Add a Pet"
+          onAction={() => navigate("/onboarding")}
+        />
       </div>
     );
   }
