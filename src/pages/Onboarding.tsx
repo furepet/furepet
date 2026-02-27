@@ -167,57 +167,84 @@ const Onboarding = () => {
 
     try {
       const saveOperation = async () => {
-        let photoUrl: string | null = null;
-
-        if (photoFile) {
-          const ext = photoFile.name.split(".").pop();
-          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-          const { error: uploadError } = await withLockRetry(() =>
-            supabase.storage.from("pet-photos").upload(path, photoFile, { contentType: photoFile.type })
-          );
-
-          if (uploadError) {
-            console.warn("Photo upload failed, continuing without photo:", uploadError.message);
-          } else {
-            const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
-            photoUrl = urlData.publicUrl;
-          }
-        }
-
-        const { error: petError } = await withLockRetry(async () =>
-          await supabase.from("pets").insert({
-            user_id: user.id,
-            pet_name: petName.trim(),
-            nickname: nickname.trim() || null,
-            species,
-            photo_url: photoUrl,
-            date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
-            together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
-            breed: breed || null,
-            microchip_number: microchipNumber.trim() || null,
-            neuter_spay_status: neuterSpayStatus,
-            neuter_spay_date:
-              neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
-            has_insurance: hasInsurance,
-            insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
-            policy_number: hasInsurance ? policyNumber.trim() || null : null,
-            is_premium: isPremium,
-          })
+        const { data: petRecord, error: petError } = await withLockRetry(async () =>
+          await supabase
+            .from("pets")
+            .insert({
+              user_id: user.id,
+              pet_name: petName.trim(),
+              nickname: nickname.trim() || null,
+              species,
+              photo_url: null,
+              date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+              together_since: togetherSince ? format(togetherSince, "yyyy-MM-dd") : null,
+              breed: breed || null,
+              microchip_number: microchipNumber.trim() || null,
+              neuter_spay_status: neuterSpayStatus,
+              neuter_spay_date:
+                neuterSpayStatus === "Yes" && neuterSpayDate ? format(neuterSpayDate, "yyyy-MM-dd") : null,
+              has_insurance: hasInsurance,
+              insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
+              policy_number: hasInsurance ? policyNumber.trim() || null : null,
+              is_premium: isPremium,
+            })
+            .select("id")
+            .single()
         );
 
-        if (petError) throw petError;
+        if (petError) {
+          console.error("Onboarding pet save failed:", petError);
+          throw petError;
+        }
 
         const { error: profileError } = await withLockRetry(async () =>
           await supabase
             .from("profiles")
-            .update({
-              onboarding_completed: true,
-              subscription_status: isPremium ? "premium" : "free",
-            })
+            .upsert(
+              {
+                user_id: user.id,
+                onboarding_completed: true,
+                subscription_status: isPremium ? "premium" : "free",
+              },
+              { onConflict: "user_id" }
+            )
+        );
+
+        if (profileError) {
+          console.error("Failed to persist onboarding_completed in profile:", profileError);
+        }
+
+        if (!photoFile) return;
+
+        const ext = photoFile.name.split(".").pop();
+        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await withLockRetry(() =>
+          supabase.storage.from("pet-photos").upload(path, photoFile, { contentType: photoFile.type })
+        );
+
+        if (uploadError) {
+          console.warn("Pet was created but photo upload failed:", uploadError.message);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
+
+        if (!petRecord?.id) {
+          console.error("Pet photo update skipped because pet ID was not returned.");
+          return;
+        }
+
+        const { error: photoUpdateError } = await withLockRetry(async () =>
+          await supabase
+            .from("pets")
+            .update({ photo_url: urlData.publicUrl })
+            .eq("id", petRecord.id)
             .eq("user_id", user.id)
         );
 
-        if (profileError) throw profileError;
+        if (photoUpdateError) {
+          console.warn("Pet was created but photo update failed:", photoUpdateError.message);
+        }
       };
 
       await Promise.race([

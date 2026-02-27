@@ -25,14 +25,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true;
 
     const fetchProfile = async (userId: string, userMeta?: Record<string, any>) => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("first_name, onboarding_completed")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const [
+        { data: profile, error: profileError },
+        { data: pets, error: petsError },
+      ] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("first_name, onboarding_completed")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabase.from("pets").select("id").eq("user_id", userId).limit(1),
+      ]);
+
+      if (profileError) {
+        console.error("Failed to load profile during auth bootstrap:", profileError);
+      }
+
+      if (petsError) {
+        console.error("Failed to check pet records during auth bootstrap:", petsError);
+      }
+
       if (!mounted) return;
-      setFirstName(data?.first_name || userMeta?.first_name || "");
-      setOnboardingCompleted(data?.onboarding_completed ?? false);
+
+      const hasAtLeastOnePet = (pets?.length ?? 0) > 0;
+      setFirstName(profile?.first_name || userMeta?.first_name || "");
+      setOnboardingCompleted(Boolean(profile?.onboarding_completed) || hasAtLeastOnePet);
     };
 
     // Initialize from getSession first to avoid blank screen
