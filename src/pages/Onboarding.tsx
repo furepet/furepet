@@ -26,10 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const TOTAL_STEPS = 5;
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const buildPetPayload = (
-  userId: string,
   petName: string,
   nickname: string,
   species: string,
@@ -42,9 +39,7 @@ const buildPetPayload = (
   hasInsurance: boolean,
   insuranceCompany: string,
   policyNumber: string,
-  isPremium: boolean,
 ) => ({
-  user_id: userId,
   pet_name: petName.trim(),
   nickname: nickname.trim() || null,
   species,
@@ -59,7 +54,6 @@ const buildPetPayload = (
   has_insurance: hasInsurance,
   insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
   policy_number: hasInsurance ? policyNumber.trim() || null : null,
-  is_premium: isPremium,
 });
 
 const Onboarding = () => {
@@ -91,9 +85,7 @@ const Onboarding = () => {
 
   useEffect(() => {
     return () => {
-      if (photoPreview) {
-        URL.revokeObjectURL(photoPreview);
-      }
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
     };
   }, [photoPreview]);
 
@@ -105,7 +97,6 @@ const Onboarding = () => {
       toast({ title: "Invalid format", description: "Please upload a JPG or PNG image.", variant: "destructive" });
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" });
       return;
@@ -113,7 +104,6 @@ const Onboarding = () => {
 
     const nextPreviewUrl = URL.createObjectURL(file);
     const img = new Image();
-
     img.onload = () => {
       if (img.width < 400 || img.height < 400) {
         URL.revokeObjectURL(nextPreviewUrl);
@@ -126,73 +116,15 @@ const Onboarding = () => {
         return nextPreviewUrl;
       });
     };
-
     img.onerror = () => {
       URL.revokeObjectURL(nextPreviewUrl);
       toast({ title: "Image error", description: "Unable to load that image.", variant: "destructive" });
     };
-
     img.src = nextPreviewUrl;
   };
 
-  /** Try saving via the Supabase JS client */
-  const saveViaClient = async (petPayload: any, isPremium: boolean) => {
-    console.log("Onboarding: attempting save via client SDK");
-
-    const { data: petRecord, error: petError } = await supabase
-      .from("pets")
-      .insert(petPayload)
-      .select("id")
-      .single();
-
-    if (petError) {
-      console.error("Client pet insert error:", JSON.stringify(petError));
-      throw new Error(petError.message);
-    }
-
-    console.log("Onboarding: pet created via client, id:", petRecord?.id);
-
-    // Profile update (non-blocking)
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        onboarding_completed: true,
-        subscription_status: isPremium ? "premium" : "free",
-      })
-      .eq("user_id", petPayload.user_id);
-
-    if (profileError) {
-      console.warn("Client profile update error:", JSON.stringify(profileError));
-    }
-
-    return petRecord?.id;
-  };
-
-  /** Fallback: save via edge function to bypass any client-side auth lock issues */
-  const saveViaEdgeFunction = async (petPayload: Record<string, any>, isPremium: boolean) => {
-    console.log("Onboarding: attempting save via edge function fallback");
-
-    const { user_id, ...petWithoutUserId } = petPayload;
-
-    const { data, error } = await supabase.functions.invoke("save-onboarding", {
-      body: { pet: petWithoutUserId, isPremium },
-    });
-
-    if (error) {
-      console.error("Edge function error:", error);
-      throw new Error(typeof error === "string" ? error : error.message || "Edge function failed");
-    }
-
-    if (!data?.success) {
-      throw new Error(data?.error || "Edge function returned failure");
-    }
-
-    console.log("Onboarding: pet created via edge function, id:", data.petId);
-    return data.petId;
-  };
-
   const savePet = async (isPremium: boolean) => {
-    if (!user) {
+    if (!user || !session) {
       navigate("/", { replace: true });
       return;
     }
@@ -200,76 +132,68 @@ const Onboarding = () => {
     setSaving(true);
 
     const petPayload = buildPetPayload(
-      user.id, petName, nickname, species, dateOfBirth, togetherSince,
+      petName, nickname, species, dateOfBirth, togetherSince,
       breed, microchipNumber, neuterSpayStatus, neuterSpayDate,
-      hasInsurance, insuranceCompany, policyNumber, isPremium,
+      hasInsurance, insuranceCompany, policyNumber,
     );
 
-    let petId: string | undefined;
-    let savedSuccessfully = false;
-
-    // Attempt 1: client SDK
     try {
-      petId = await saveViaClient(petPayload, isPremium);
-      savedSuccessfully = true;
-    } catch (err) {
-      console.warn("Onboarding: client save failed, will retry…", err);
-    }
+      // Use raw fetch() to call the edge function — bypasses client-side auth lock entirely
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/complete-onboarding`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ pet: petPayload, isPremium }),
+      });
 
-    // Attempt 2: retry client after short delay
-    if (!savedSuccessfully) {
-      await wait(2000);
-      try {
-        petId = await saveViaClient(petPayload, isPremium);
-        savedSuccessfully = true;
-      } catch (err) {
-        console.warn("Onboarding: client retry failed, falling back to edge function…", err);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to save pet data");
       }
-    }
 
-    // Attempt 3: edge function fallback
-    if (!savedSuccessfully) {
-      try {
-        petId = await saveViaEdgeFunction(petPayload, isPremium);
-        savedSuccessfully = true;
-      } catch (err) {
-        console.error("Onboarding: edge function fallback failed:", err);
-        toast({
-          title: "Unable to save",
-          description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
-          variant: "destructive",
-        });
-        setSaving(false);
-        return;
-      }
-    }
+      console.log("Onboarding: pet saved via edge function, id:", result.petId);
 
-    // Upload photo if we have one and a pet ID
-    if (photoFile && petId) {
-      try {
-        const ext = photoFile.name.split(".").pop();
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("pet-photos")
-          .upload(path, photoFile, { contentType: photoFile.type });
+      // Upload photo (non-blocking, uses supabase client which is fine for storage)
+      if (photoFile && result.petId) {
+        try {
+          const ext = photoFile.name.split(".").pop();
+          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("pet-photos")
+            .upload(path, photoFile, { contentType: photoFile.type });
 
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
-          await supabase
-            .from("pets")
-            .update({ photo_url: urlData.publicUrl })
-            .eq("id", petId)
-            .eq("user_id", user.id);
-        } else {
-          console.warn("Photo upload failed:", uploadError.message);
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
+            await fetch(`${supabaseUrl}/rest/v1/pets?id=eq.${result.petId}&user_id=eq.${user.id}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.access_token}`,
+                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ photo_url: urlData.publicUrl }),
+            });
+          }
+        } catch (photoErr) {
+          console.warn("Photo upload error (non-blocking):", photoErr);
         }
-      } catch (photoErr) {
-        console.warn("Photo upload error (non-blocking):", photoErr);
       }
-    }
 
-    completeOnboarding();
-    navigate("/", { replace: true });
+      completeOnboarding();
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Onboarding save error:", err);
+      toast({
+        title: "Unable to save",
+        description: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+      setSaving(false);
+    }
   };
 
   const handleNext = async () => {
@@ -285,7 +209,6 @@ const Onboarding = () => {
       setStep(2);
       return;
     }
-
     if (step === 2) {
       if (!breed) {
         toast({ title: "Breed required", description: "Please select your pet's breed.", variant: "destructive" });
@@ -294,7 +217,6 @@ const Onboarding = () => {
       setStep(3);
       return;
     }
-
     if (step === 3) { setStep(4); return; }
     if (step === 4) { setStep(5); return; }
   };
