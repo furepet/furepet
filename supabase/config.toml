@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.check-notifications]
 verify_jwt = false
+
+[functions.complete-onboarding]
+verify_jwt = false
+
+[functions.save-onboarding]
+verify_jwt = false
