@@ -157,34 +157,50 @@ const Onboarding = () => {
 
       console.log("Onboarding: pet saved via edge function, id:", result.petId);
 
-      // Upload photo (non-blocking, uses supabase client which is fine for storage)
-      if (photoFile && result.petId) {
-        try {
-          const ext = photoFile.name.split(".").pop();
-          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-          const { error: uploadError } = await supabase.storage
-            .from("pet-photos")
-            .upload(path, photoFile, { contentType: photoFile.type });
+      // Redirect immediately — don't wait for photo upload
+      completeOnboarding();
 
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("pet-photos").getPublicUrl(path);
-            await fetch(`${supabaseUrl}/rest/v1/pets?id=eq.${result.petId}&user_id=eq.${user.id}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${session.access_token}`,
-                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              },
-              body: JSON.stringify({ photo_url: urlData.publicUrl }),
-            });
+      // Fire-and-forget photo upload using raw fetch to avoid auth lock
+      if (photoFile && result.petId) {
+        const petId = result.petId;
+        const accessToken = session.access_token;
+        const uid = user.id;
+        const file = photoFile;
+        setTimeout(async () => {
+          try {
+            const ext = file.name.split(".").pop();
+            const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+            const formData = new FormData();
+            formData.append("", file);
+            const uploadRes = await fetch(
+              `${supabaseUrl}/storage/v1/object/pet-photos/${path}`,
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${accessToken}`,
+                },
+                body: formData,
+              }
+            );
+            if (uploadRes.ok) {
+              const publicUrl = `${supabaseUrl}/storage/v1/object/public/pet-photos/${path}`;
+              await fetch(`${supabaseUrl}/rest/v1/pets?id=eq.${petId}&user_id=eq.${uid}`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${accessToken}`,
+                  "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                },
+                body: JSON.stringify({ photo_url: publicUrl }),
+              });
+            }
+          } catch (e) {
+            console.warn("Background photo upload failed:", e);
           }
-        } catch (photoErr) {
-          console.warn("Photo upload error (non-blocking):", photoErr);
-        }
+        }, 0);
       }
 
-      completeOnboarding();
-      navigate("/", { replace: true });
+      window.location.href = "/";
     } catch (err) {
       console.error("Onboarding save error:", err);
       toast({
