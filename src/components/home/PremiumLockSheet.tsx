@@ -21,9 +21,11 @@ const premiumFeatures = [
 interface PremiumLockSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onStartPremium?: () => void;
+  upgrading?: boolean;
 }
 
-export const PremiumLockSheet = ({ open, onOpenChange }: PremiumLockSheetProps) => (
+export const PremiumLockSheet = ({ open, onOpenChange, onStartPremium, upgrading }: PremiumLockSheetProps) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
     <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8 pt-6">
       <SheetHeader className="items-center text-center">
@@ -47,8 +49,12 @@ export const PremiumLockSheet = ({ open, onOpenChange }: PremiumLockSheetProps) 
       </ul>
 
       <div className="mt-6 flex flex-col gap-3">
-        <Button className="h-12 w-full text-base font-semibold bg-primary hover:bg-primary/90">
-          Start Premium
+        <Button
+          className="h-12 w-full text-base font-semibold bg-primary hover:bg-primary/90"
+          onClick={onStartPremium}
+          disabled={upgrading}
+        >
+          {upgrading ? "Upgrading…" : "Start Premium"}
         </Button>
         <button
           onClick={() => onOpenChange(false)}
