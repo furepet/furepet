@@ -52,6 +52,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setOnboardingCompleted(Boolean(profile?.onboarding_completed) || hasAtLeastOnePet);
     };
 
+    // Safety timeout: if auth check hangs, stop loading to prevent blank screen
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn("Auth check timed out after 3s — clearing loading state");
+        setLoading(false);
+      }
+    }, 3000);
+
     // Initialize from getSession first to avoid blank screen
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       if (!mounted) return;
@@ -60,7 +68,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (currentSession?.user) {
         await fetchProfile(currentSession.user.id, currentSession.user.user_metadata);
       }
-      if (mounted) setLoading(false);
+      if (mounted) {
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+      }
+    }).catch((err) => {
+      console.error("getSession failed:", err);
+      if (mounted) {
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -81,6 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);
