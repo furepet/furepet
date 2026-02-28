@@ -59,23 +59,28 @@ const MenuRow = ({
   onClick?: () => void;
   trailing?: React.ReactNode;
   destructive?: boolean;
-}) => (
-  <button
-    onClick={onClick}
-    className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-3 min-h-[44px] text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-      destructive
-        ? "text-destructive hover:bg-destructive/5"
-        : "text-foreground hover:bg-accent"
-    }`}
-  >
-    <Icon className={`h-5 w-5 shrink-0 ${destructive ? "" : "text-muted-foreground"}`} />
-    <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium">{label}</p>
-      {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
-    </div>
-    {trailing ?? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-  </button>
-);
+}) => {
+  const classes = `flex w-full items-center gap-3 rounded-lg px-3.5 py-3 min-h-[44px] text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+    destructive
+      ? "text-destructive hover:bg-destructive/5"
+      : "text-foreground hover:bg-accent"
+  }`;
+  const content = (
+    <>
+      <Icon className={`h-5 w-5 shrink-0 ${destructive ? "" : "text-muted-foreground"}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{label}</p>
+        {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+      </div>
+      {trailing ?? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+    </>
+  );
+  // Use a div when there's no onClick to avoid nested <button> issues
+  if (!onClick) {
+    return <div className={classes}>{content}</div>;
+  }
+  return <button onClick={onClick} className={classes}>{content}</button>;
+};
 
 const Settings = () => {
   const navigate = useNavigate();
