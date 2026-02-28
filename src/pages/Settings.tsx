@@ -35,6 +35,7 @@ import { usePets } from "@/hooks/usePets";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
 
 /* ── Section Header ── */
 const SectionHeader = ({ children }: { children: React.ReactNode }) => (
@@ -101,6 +102,10 @@ const Settings = () => {
 
   // Unit preference
   const [unitPref, setUnitPref] = useState<"imperial" | "metric">("imperial");
+
+  // Premium upsell
+  const [premiumOpen, setPremiumOpen] = useState(false);
+  const [upgradingSub, setUpgradingSub] = useState(false);
 
   // Danger zone dialogs
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -274,7 +279,7 @@ const Settings = () => {
             isPremium ? (
               <span className="text-xs font-medium text-primary">Active</span>
             ) : (
-              <Button size="sm" variant="default" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); }}>
+              <Button size="sm" variant="default" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setPremiumOpen(true); }}>
                 Upgrade
               </Button>
             )
@@ -552,6 +557,37 @@ const Settings = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Premium Upsell */}
+      <PremiumLockSheet
+        open={premiumOpen}
+        onOpenChange={setPremiumOpen}
+        onStartPremium={async () => {
+          if (!user) return;
+          setUpgradingSub(true);
+          const { error } = await supabase
+            .from("profiles")
+            .update({ subscription_status: "premium" })
+            .eq("user_id", user.id);
+          if (error) {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+            setUpgradingSub(false);
+            return;
+          }
+          // Also mark active pet as premium
+          if (activePet) {
+            await supabase
+              .from("pets")
+              .update({ is_premium: true })
+              .eq("user_id", user.id);
+          }
+          setUpgradingSub(false);
+          setPremiumOpen(false);
+          toast({ title: "Welcome to Premium! 🎉" });
+          window.location.reload();
+        }}
+        upgrading={upgradingSub}
+      />
     </div>
   );
 };
