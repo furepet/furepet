@@ -21,6 +21,8 @@ import {
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
+import { PhoneInput } from "./PhoneInput";
+import { AddressFields, parseAddress, serializeAddress, type AddressData } from "./AddressFields";
 
 interface Props {
   open: boolean;
@@ -154,14 +156,15 @@ function VetFields({ fields, set }: { fields: Record<string, any>; set: (k: stri
   const lastCheckup = fields.last_checkup_date ? parseISO(fields.last_checkup_date) : null;
   const nextCheckup = lastCheckup ? addYears(lastCheckup, 1) : null;
   const daysUntil = nextCheckup ? differenceInDays(nextCheckup, new Date()) : null;
+  const address = parseAddress(fields.address);
 
   return (
     <>
       <Field label="Clinic Name" value={fields.clinic_name} onChange={(v) => set("clinic_name", v)} />
       <Field label="Veterinarian Name" value={fields.vet_name} onChange={(v) => set("vet_name", v)} />
-      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <PhoneInput value={fields.phone} onChange={(v) => set("phone", v)} />
       <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
-      <Field label="Address" value={fields.address} onChange={(v) => set("address", v)} />
+      <AddressFields address={address} onChange={(a) => set("address", serializeAddress(a))} />
       <div className="flex items-center justify-between">
         <Label>Annual Check-Up Reminder</Label>
         <Switch checked={!!fields.checkup_reminder_enabled} onCheckedChange={(v) => set("checkup_reminder_enabled", v)} />
@@ -184,7 +187,7 @@ function WalkerFields({ fields, set, petName }: { fields: Record<string, any>; s
   return (
     <>
       <Field label="Walker Name" value={fields.name} onChange={(v) => set("name", v)} />
-      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <PhoneInput value={fields.phone} onChange={(v) => set("phone", v)} />
       <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
       <DateField label={`Started with ${petName} on`} value={fields.started_date ?? ""} onChange={(v) => set("started_date", v)} />
       {months !== null && months > 0 && <p className="text-sm text-primary font-medium">Walking together for {months} month{months !== 1 ? "s" : ""}</p>}
@@ -202,6 +205,7 @@ function DaycareFields({ fields, set, petName }: { fields: Record<string, any>; 
   const months = started ? differenceInMonths(new Date(), started) : null;
   const friends: string[] = fields.friends ?? [];
   const [friendInput, setFriendInput] = useState("");
+  const address = parseAddress(fields.address);
 
   const addFriend = () => {
     const name = friendInput.trim();
@@ -214,9 +218,9 @@ function DaycareFields({ fields, set, petName }: { fields: Record<string, any>; 
   return (
     <>
       <Field label="Facility Name" value={fields.facility_name} onChange={(v) => set("facility_name", v)} />
-      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <PhoneInput value={fields.phone} onChange={(v) => set("phone", v)} />
       <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
-      <Field label="Address" value={fields.address} onChange={(v) => set("address", v)} />
+      <AddressFields address={address} onChange={(a) => set("address", serializeAddress(a))} />
       <DateField label="Started on" value={fields.started_date ?? ""} onChange={(v) => set("started_date", v)} />
       {months !== null && months > 0 && <p className="text-sm text-primary font-medium">Attending for {months} month{months !== 1 ? "s" : ""}</p>}
       <Field label="Favorite Caretaker" value={fields.favorite_caretaker} onChange={(v) => set("favorite_caretaker", v)} />
@@ -270,7 +274,7 @@ function GroomerFields({ fields, set }: { fields: Record<string, any>; set: (k: 
     <>
       <Field label="Salon Name" value={fields.salon_name} onChange={(v) => set("salon_name", v)} />
       <Field label="Groomer Name" value={fields.groomer_name} onChange={(v) => set("groomer_name", v)} />
-      <Field label="Phone Number" value={fields.phone} onChange={(v) => set("phone", v)} type="tel" />
+      <PhoneInput value={fields.phone} onChange={(v) => set("phone", v)} />
       <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
 
       <div>
@@ -329,6 +333,14 @@ function EmergencyFields({ fields, set }: { fields: Record<string, any>; set: (k
     set("contacts", updated);
   };
 
+  const formatPhone = (value: string): string => {
+    const digits = value.replace(/\D/g, "").slice(0, 10);
+    if (digits.length === 0) return "";
+    if (digits.length <= 3) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
   return (
     <>
       {[0, 1, 2].map((i) => (
@@ -349,7 +361,12 @@ function EmergencyFields({ fields, set }: { fields: Record<string, any>; set: (k
           </div>
           <div>
             <Label>Phone Number</Label>
-            <Input type="tel" value={contacts[i]?.phone ?? ""} onChange={(e) => updateContact(i, "phone", e.target.value)} />
+            <Input
+              type="tel"
+              placeholder="(555) 555-5555"
+              value={contacts[i]?.phone ?? ""}
+              onChange={(e) => updateContact(i, "phone", formatPhone(e.target.value))}
+            />
           </div>
           <div>
             <Label>Email</Label>
