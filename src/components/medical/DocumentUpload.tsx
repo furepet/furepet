@@ -13,7 +13,7 @@ interface Props {
 }
 
 const ACCEPTED = ".pdf,.jpg,.jpeg,.png";
-const MAX_SIZE = 10 * 1024 * 1024;
+const MAX_SIZE = 20 * 1024 * 1024;
 
 export const DocumentUpload = ({ petId, petName }: Props) => {
   const { user } = useAuth();
@@ -30,7 +30,7 @@ export const DocumentUpload = ({ petId, petName }: Props) => {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.size > MAX_SIZE) {
-        toast.error(`${file.name} exceeds 10MB limit`);
+        toast.error(`${file.name} exceeds 20MB limit`);
         continue;
       }
 
@@ -140,7 +140,7 @@ export const DocumentUpload = ({ petId, petName }: Props) => {
           <><Upload className="h-4 w-4 mr-2" /> Upload Medical Records</>
         )}
       </Button>
-      <p className="text-[11px] text-muted-foreground text-center mt-1">PDF, JPG, PNG · Max 10MB</p>
+      <p className="text-[11px] text-muted-foreground text-center mt-1">PDF, JPG, PNG · Max 20MB</p>
     </div>
   );
 };
