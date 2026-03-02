@@ -16,6 +16,7 @@ import { DatePickerField } from "@/components/onboarding/DatePickerField";
 import { BreedCombobox } from "@/components/onboarding/BreedCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { saveData } from "@/lib/saveData";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Pet } from "@/hooks/usePets";
 
@@ -156,9 +157,10 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
         photoUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase
-        .from("pets")
-        .update({
+      await saveData({
+        table: "pets",
+        action: "update",
+        data: {
           pet_name: petName.trim(),
           nickname: nickname.trim() || null,
           species,
@@ -172,10 +174,9 @@ export const PetBasics = ({ pet }: PetBasicsProps) => {
           insurance_company: hasInsurance ? insuranceCompany.trim() || null : null,
           policy_number: hasInsurance ? policyNumber.trim() || null : null,
           photo_url: photoUrl,
-        })
-        .eq("id", pet.id);
-
-      if (error) throw error;
+        },
+        match: { id: pet.id },
+      });
 
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
       setEditing(false);

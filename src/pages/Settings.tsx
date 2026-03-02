@@ -33,6 +33,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { usePets } from "@/hooks/usePets";
 import { supabase } from "@/integrations/supabase/client";
+import { saveData } from "@/lib/saveData";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
@@ -75,7 +76,6 @@ const MenuRow = ({
       {trailing ?? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
     </>
   );
-  // Use a div when there's no onClick to avoid nested <button> issues
   if (!onClick) {
     return <div className={classes}>{content}</div>;
   }
@@ -138,18 +138,20 @@ const Settings = () => {
   const handleSaveName = async () => {
     if (!user || !newName.trim()) return;
     setSavingName(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ first_name: newName.trim() })
-      .eq("user_id", user.id);
-    setSavingName(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      await saveData({
+        table: "profiles",
+        action: "update",
+        data: { first_name: newName.trim() },
+        filters: { user_id: user.id },
+      });
       toast({ title: "Name updated" });
       setEditNameOpen(false);
-      // Force reload to update AuthContext
       window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingName(false);
     }
   };
 
@@ -195,10 +197,16 @@ const Settings = () => {
     const newPref = checked ? "metric" : "imperial";
     setUnitPref(newPref);
     if (user) {
-      await supabase
-        .from("profiles")
-        .update({ unit_preference: newPref })
-        .eq("user_id", user.id);
+      try {
+        await saveData({
+          table: "profiles",
+          action: "update",
+          data: { unit_preference: newPref },
+          filters: { user_id: user.id },
+        });
+      } catch (err: any) {
+        // Silently fail for unit toggle
+      }
     }
   };
 
@@ -223,22 +231,23 @@ const Settings = () => {
       return;
     }
 
-    // Soft-delete: mark profile with deleted_at
-    const { error } = await supabase
-      .from("profiles")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("user_id", user.id);
-
-    setDeleting(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      await saveData({
+        table: "profiles",
+        action: "update",
+        data: { deleted_at: new Date().toISOString() },
+        filters: { user_id: user.id },
+      });
+      setDeleting(false);
       setDeleteOpen(false);
       toast({
         title: "Account scheduled for deletion",
         description: "Your account will be permanently deleted in 30 days. Contact hello@furepet.com to cancel.",
       });
       await signOut();
+    } catch (err: any) {
+      setDeleting(false);
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -570,26 +579,29 @@ const Settings = () => {
         onStartPremium={async () => {
           if (!user) return;
           setUpgradingSub(true);
-          const { error } = await supabase
-            .from("profiles")
-            .update({ subscription_status: "premium" })
-            .eq("user_id", user.id);
-          if (error) {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+          try {
+            await saveData({
+              table: "profiles",
+              action: "update",
+              data: { subscription_status: "premium" },
+              filters: { user_id: user.id },
+            });
+            if (activePet) {
+              await saveData({
+                table: "pets",
+                action: "update",
+                data: { is_premium: true },
+                filters: {},
+              });
+            }
             setUpgradingSub(false);
-            return;
+            setPremiumOpen(false);
+            toast({ title: "Welcome to Premium! 🎉" });
+            window.location.reload();
+          } catch (err: any) {
+            toast({ title: "Error", description: err.message, variant: "destructive" });
+            setUpgradingSub(false);
           }
-          // Also mark active pet as premium
-          if (activePet) {
-            await supabase
-              .from("pets")
-              .update({ is_premium: true })
-              .eq("user_id", user.id);
-          }
-          setUpgradingSub(false);
-          setPremiumOpen(false);
-          toast({ title: "Welcome to Premium! 🎉" });
-          window.location.reload();
         }}
         upgrading={upgradingSub}
       />

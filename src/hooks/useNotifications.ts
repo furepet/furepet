@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { saveData } from "@/lib/saveData";
 
 export interface Notification {
   id: string;
@@ -55,27 +56,17 @@ export const useMarkAsRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("id", id);
-      if (error) throw error;
+      await saveData({ table: "notifications", action: "update", data: { read: true }, match: { id } });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 };
 
 export const useMarkAllAsRead = () => {
-  const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", user!.id)
-        .eq("read", false);
-      if (error) throw error;
+      await saveData({ table: "notifications", action: "update", data: { read: true }, filters: { read: false } });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
@@ -99,14 +90,10 @@ export const useNotificationPreferences = () => {
 };
 
 export const useUpsertNotificationPreferences = () => {
-  const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (prefs: Partial<NotificationPreferences>) => {
-      const { error } = await supabase
-        .from("notification_preferences")
-        .upsert({ user_id: user!.id, ...prefs }, { onConflict: "user_id" });
-      if (error) throw error;
+      await saveData({ table: "notification_preferences", action: "upsert", data: prefs, onConflict: "user_id" });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notification-preferences"] }),
   });

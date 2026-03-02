@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { saveData } from "@/lib/saveData";
 
 export interface ChatMessage {
   id: string;
@@ -33,23 +34,14 @@ export const useChatMessages = (petId: string | undefined) => {
 
   const saveMessage = useMutation({
     mutationFn: async (msg: { pet_id: string; role: string; content: string }) => {
-      const { error } = await supabase.from("chat_messages").insert({
-        ...msg,
-        user_id: session!.user.id,
-      });
-      if (error) throw error;
+      await saveData({ table: "chat_messages", action: "insert", data: msg });
     },
   });
 
   const clearChat = useMutation({
     mutationFn: async () => {
       if (!petId) return;
-      const { error } = await supabase
-        .from("chat_messages")
-        .delete()
-        .eq("pet_id", petId)
-        .eq("user_id", session!.user.id);
-      if (error) throw error;
+      await saveData({ table: "chat_messages", action: "delete", filters: { pet_id: petId } });
     },
     onSuccess: () => {
       queryClient.setQueryData(["chat_messages", petId], []);

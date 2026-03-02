@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DatePickerField } from "@/components/onboarding/DatePickerField";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { saveData } from "@/lib/saveData";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Pet } from "@/hooks/usePets";
 
@@ -36,15 +36,16 @@ export const MarkAsPassedDialog = ({ pet, open, onOpenChange }: MarkAsPassedDial
     }
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("pets")
-        .update({
+      await saveData({
+        table: "pets",
+        action: "update",
+        data: {
           is_deceased: true,
           date_of_passing: format(dateOfPassing, "yyyy-MM-dd"),
           deceased_at: new Date().toISOString(),
-        })
-        .eq("id", pet.id);
-      if (error) throw error;
+        },
+        match: { id: pet.id },
+      });
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
       onOpenChange(false);
       toast({ title: `Memorial created for ${pet.pet_name} 🌈` });
@@ -119,15 +120,16 @@ export const RestoreProfileDialog = ({ pet, open, onOpenChange }: RestoreProfile
   const handleRestore = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("pets")
-        .update({
+      await saveData({
+        table: "pets",
+        action: "update",
+        data: {
           is_deceased: false,
           date_of_passing: null,
           deceased_at: null,
-        })
-        .eq("id", pet.id);
-      if (error) throw error;
+        },
+        match: { id: pet.id },
+      });
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
       onOpenChange(false);
       toast({ title: `${pet.pet_name}'s profile restored!` });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { saveData } from "@/lib/saveData";
 
 // ── Types for normalized medical tables ──
 
@@ -71,17 +72,6 @@ const TABLE_MAP: Record<MedicalCategory, string> = {
   observation: "observations",
 };
 
-// Map category to the date column used for ordering
-const DATE_COL_MAP: Record<MedicalCategory, string> = {
-  vaccine: "date_administered",
-  diagnosis: "date_diagnosed",
-  medication: "start_date",
-  surgery: "date",
-  behavioral: "first_noticed",
-  allergy: "date_identified",
-  observation: "date_first_noticed",
-};
-
 // ── Generic hooks ──
 
 function useMedicalTable<T>(category: MedicalCategory, petId: string | undefined) {
@@ -105,16 +95,11 @@ function useMedicalTable<T>(category: MedicalCategory, petId: string | undefined
 
 function useAddMedicalRow(category: MedicalCategory) {
   const qc = useQueryClient();
-  const { user } = useAuth();
   const table = TABLE_MAP[category];
 
   return useMutation({
     mutationFn: async ({ pet_id, data }: { pet_id: string; data: Record<string, any> }) => {
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await (supabase as any)
-        .from(table)
-        .insert({ ...data, pet_id, user_id: user.id });
-      if (error) throw error;
+      await saveData({ table, action: "insert", data: { ...data, pet_id } });
       return pet_id;
     },
     onSuccess: (petId) => {
@@ -129,8 +114,7 @@ function useUpdateMedicalRow(category: MedicalCategory) {
 
   return useMutation({
     mutationFn: async ({ id, pet_id, data }: { id: string; pet_id: string; data: Record<string, any> }) => {
-      const { error } = await (supabase as any).from(table).update(data).eq("id", id);
-      if (error) throw error;
+      await saveData({ table, action: "update", data, match: { id } });
       return pet_id;
     },
     onSuccess: (petId) => {
@@ -145,8 +129,7 @@ function useDeleteMedicalRow(category: MedicalCategory) {
 
   return useMutation({
     mutationFn: async ({ id, petId }: { id: string; petId: string }) => {
-      const { error } = await (supabase as any).from(table).delete().eq("id", id);
-      if (error) throw error;
+      await saveData({ table, action: "delete", match: { id } });
       return petId;
     },
     onSuccess: (petId) => {
@@ -192,16 +175,11 @@ export const useDeleteObservation = () => useDeleteMedicalRow("observation");
 // ── Generic add/update/delete for use with dynamic category ──
 export const useAddMedicalRecord = () => {
   const qc = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (entry: { pet_id: string; category: MedicalCategory; data: Record<string, any> }) => {
-      if (!user) throw new Error("Not authenticated");
       const table = TABLE_MAP[entry.category];
-      const { error } = await (supabase as any)
-        .from(table)
-        .insert({ ...entry.data, pet_id: entry.pet_id, user_id: user.id });
-      if (error) throw error;
+      await saveData({ table, action: "insert", data: { ...entry.data, pet_id: entry.pet_id } });
       return { petId: entry.pet_id, category: entry.category };
     },
     onSuccess: ({ petId, category }) => {
@@ -216,8 +194,7 @@ export const useUpdateMedicalRecord = () => {
   return useMutation({
     mutationFn: async (entry: { id: string; pet_id: string; category: MedicalCategory; data: Record<string, any> }) => {
       const table = TABLE_MAP[entry.category];
-      const { error } = await (supabase as any).from(table).update(entry.data).eq("id", entry.id);
-      if (error) throw error;
+      await saveData({ table, action: "update", data: entry.data, match: { id: entry.id } });
       return { petId: entry.pet_id, category: entry.category };
     },
     onSuccess: ({ petId, category }) => {
@@ -232,8 +209,7 @@ export const useDeleteMedicalRecord = () => {
   return useMutation({
     mutationFn: async ({ id, petId, category }: { id: string; petId: string; category: MedicalCategory }) => {
       const table = TABLE_MAP[category];
-      const { error } = await (supabase as any).from(table).delete().eq("id", id);
-      if (error) throw error;
+      await saveData({ table, action: "delete", match: { id } });
       return { petId, category };
     },
     onSuccess: ({ petId, category }) => {
@@ -242,7 +218,7 @@ export const useDeleteMedicalRecord = () => {
   });
 };
 
-// ── Document hooks (unchanged table) ──
+// ── Document hooks ──
 
 export interface MedicalDocument {
   id: string; pet_id: string; user_id: string;
@@ -273,9 +249,9 @@ export const useDeleteMedicalDocument = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, petId, filePath }: { id: string; petId: string; filePath: string }) => {
+      // Storage removal still uses direct client (no RLS lock issue for storage)
       await supabase.storage.from("medical-documents").remove([filePath]);
-      const { error } = await supabase.from("medical_documents").delete().eq("id", id);
-      if (error) throw error;
+      await saveData({ table: "medical_documents", action: "delete", match: { id } });
       return petId;
     },
     onSuccess: (petId) => { qc.invalidateQueries({ queryKey: ["medical-documents", petId] }); },
