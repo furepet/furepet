@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub;
 
     // Parse request
-    const { table, action, data, match } = await req.json();
+    const { table, action, data, match, filters, onConflict } = await req.json();
 
     if (!table || !action) {
       return new Response(JSON.stringify({ error: "Missing table or action" }), {
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       "allergies", "behavioral_issues", "observations",
       "medical_records", "medical_documents", "memorial",
       "notification_preferences", "push_subscriptions",
-      "chat_messages", "emergency_contacts",
+      "chat_messages", "emergency_contacts", "notifications",
       "village_vet", "village_walker", "village_daycare", "village_groomer",
       "village_members",
     ];
@@ -87,56 +87,93 @@ Deno.serve(async (req) => {
         result = inserted;
         break;
       }
-      case "update": {
-        if (!match?.id) {
-          return new Response(JSON.stringify({ error: "Missing match.id for update" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        // Verify ownership
-        const { data: existing, error: fetchErr } = await serviceClient
-          .from(table)
-          .select("user_id")
-          .eq("id", match.id)
-          .single();
-        if (fetchErr || !existing) throw new Error("Record not found");
-        if (existing.user_id !== userId) throw new Error("Not authorized");
 
-        const { data: updated, error } = await serviceClient
+      case "upsert": {
+        const upsertData = { ...data, user_id: userId };
+        const upsertOpts: any = {};
+        if (onConflict) upsertOpts.onConflict = onConflict;
+        const { data: upserted, error } = await serviceClient
           .from(table)
-          .update(data)
-          .eq("id", match.id)
+          .upsert(upsertData, upsertOpts)
           .select()
           .single();
         if (error) throw error;
-        result = updated;
+        result = upserted;
         break;
       }
-      case "delete": {
-        if (!match?.id) {
-          return new Response(JSON.stringify({ error: "Missing match.id for delete" }), {
+
+      case "update": {
+        if (match?.id) {
+          // Single record update by ID - verify ownership
+          const { data: existing, error: fetchErr } = await serviceClient
+            .from(table)
+            .select("user_id")
+            .eq("id", match.id)
+            .single();
+          if (fetchErr || !existing) throw new Error("Record not found");
+          if (existing.user_id !== userId) throw new Error("Not authorized");
+
+          const { data: updated, error } = await serviceClient
+            .from(table)
+            .update(data)
+            .eq("id", match.id)
+            .select()
+            .single();
+          if (error) throw error;
+          result = updated;
+        } else if (filters) {
+          // Bulk update with filters - always scoped to user_id
+          let query = serviceClient.from(table).update(data).eq("user_id", userId);
+          for (const [col, val] of Object.entries(filters)) {
+            query = query.eq(col, val);
+          }
+          const { data: updated, error } = await query.select();
+          if (error) throw error;
+          result = updated;
+        } else {
+          return new Response(JSON.stringify({ error: "Missing match.id or filters for update" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        // Verify ownership
-        const { data: existing2, error: fetchErr2 } = await serviceClient
-          .from(table)
-          .select("user_id")
-          .eq("id", match.id)
-          .single();
-        if (fetchErr2 || !existing2) throw new Error("Record not found");
-        if (existing2.user_id !== userId) throw new Error("Not authorized");
-
-        const { error } = await serviceClient
-          .from(table)
-          .delete()
-          .eq("id", match.id);
-        if (error) throw error;
-        result = { deleted: true };
         break;
       }
+
+      case "delete": {
+        if (match?.id) {
+          // Single record delete by ID - verify ownership
+          const { data: existing, error: fetchErr } = await serviceClient
+            .from(table)
+            .select("user_id")
+            .eq("id", match.id)
+            .single();
+          if (fetchErr || !existing) throw new Error("Record not found");
+          if (existing.user_id !== userId) throw new Error("Not authorized");
+
+          const { error } = await serviceClient
+            .from(table)
+            .delete()
+            .eq("id", match.id);
+          if (error) throw error;
+          result = { deleted: true };
+        } else if (filters) {
+          // Bulk delete with filters - always scoped to user_id
+          let query = serviceClient.from(table).delete().eq("user_id", userId);
+          for (const [col, val] of Object.entries(filters)) {
+            query = query.eq(col, val);
+          }
+          const { error } = await query;
+          if (error) throw error;
+          result = { deleted: true };
+        } else {
+          return new Response(JSON.stringify({ error: "Missing match.id or filters for delete" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        break;
+      }
+
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
           status: 400,

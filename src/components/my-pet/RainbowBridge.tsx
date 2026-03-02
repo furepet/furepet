@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { saveData } from "@/lib/saveData";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Pet } from "@/hooks/usePets";
 
@@ -34,17 +35,18 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
   const handleSaveMemories = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("pets")
-        .update({
+      await saveData({
+        table: "pets",
+        action: "update",
+        data: {
           memorial_memories: {
             favorite_memory: favoriteMemory,
             what_made_special: whatMadeSpecial,
             message_to: messageTo,
           },
-        })
-        .eq("id", pet.id);
-      if (error) throw error;
+        },
+        match: { id: pet.id },
+      });
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
       toast({ title: "Memorial updated 💛" });
     } catch (err: any) {
@@ -80,11 +82,12 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("memorial-photos").getPublicUrl(path);
       const newPhotos = [...photos, urlData.publicUrl];
-      const { error } = await supabase
-        .from("pets")
-        .update({ memorial_photos: newPhotos })
-        .eq("id", pet.id);
-      if (error) throw error;
+      await saveData({
+        table: "pets",
+        action: "update",
+        data: { memorial_photos: newPhotos },
+        match: { id: pet.id },
+      });
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
       toast({ title: "Photo added 📷" });
     } catch (err: any) {
@@ -98,11 +101,12 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
   const handleRemovePhoto = async (index: number) => {
     const newPhotos = photos.filter((_, i) => i !== index);
     try {
-      const { error } = await supabase
-        .from("pets")
-        .update({ memorial_photos: newPhotos })
-        .eq("id", pet.id);
-      if (error) throw error;
+      await saveData({
+        table: "pets",
+        action: "update",
+        data: { memorial_photos: newPhotos },
+        match: { id: pet.id },
+      });
       await queryClient.invalidateQueries({ queryKey: ["pets"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -113,7 +117,6 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
     <div className="flex flex-col gap-5">
       {/* Soft gradient header */}
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-b from-secondary/20 via-primary/5 to-background p-6 text-center">
-        {/* Pet photo with golden border */}
         <div className="mx-auto mb-4 h-32 w-32 rounded-full p-1 bg-gradient-to-br from-secondary to-secondary-light shadow-lg">
           <div className="h-full w-full rounded-full overflow-hidden bg-card flex items-center justify-center">
             {pet.photo_url ? (

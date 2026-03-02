@@ -2,9 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface SaveDataParams {
   table: string;
-  action: "insert" | "update" | "delete";
+  action: "insert" | "update" | "delete" | "upsert";
   data?: Record<string, any>;
   match?: { id: string };
+  filters?: Record<string, any>;
+  onConflict?: string;
 }
 
 export async function saveData(params: SaveDataParams): Promise<any> {
