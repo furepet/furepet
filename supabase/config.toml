@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.save-onboarding]
 verify_jwt = false
+
+[functions.save-data]
+verify_jwt = false

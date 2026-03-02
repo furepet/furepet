@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { saveData } from "@/lib/saveData";
 
 // ── Types matching the new normalized tables ──
 
@@ -102,19 +103,13 @@ function useVillageTable<T>(table: string, petId: string | undefined) {
 
 function useUpsertVillageRow(table: string) {
   const qc = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, pet_id, data }: { id?: string; pet_id: string; data: Record<string, any> }) => {
-      if (!user) throw new Error("Not authenticated");
       if (id) {
-        const { error } = await (supabase as any).from(table).update(data).eq("id", id);
-        if (error) throw error;
+        await saveData({ table, action: "update", data, match: { id } });
       } else {
-        const { error } = await (supabase as any)
-          .from(table)
-          .insert({ ...data, pet_id, user_id: user.id });
-        if (error) throw error;
+        await saveData({ table, action: "insert", data: { ...data, pet_id } });
       }
       return pet_id;
     },
@@ -128,8 +123,7 @@ function useDeleteVillageRow(table: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, petId }: { id: string; petId: string }) => {
-      const { error } = await (supabase as any).from(table).delete().eq("id", id);
-      if (error) throw error;
+      await saveData({ table, action: "delete", match: { id } });
       return petId;
     },
     onSuccess: (petId) => {
