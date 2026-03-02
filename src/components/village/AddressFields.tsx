@@ -21,7 +21,7 @@ const US_STATES = [
   "West Virginia", "Wisconsin", "Wyoming",
 ];
 
-const COUNTRIES = ["Canada", "United States"];
+const COUNTRIES = ["United States", "Canada"];
 
 export interface AddressData {
   street: string;
@@ -32,14 +32,14 @@ export interface AddressData {
 }
 
 export function parseAddress(raw: string | undefined | null): AddressData {
-  if (!raw) return { street: "", city: "", state: "", zip: "", country: "Canada" };
+  if (!raw) return { street: "", city: "", state: "Texas", zip: "", country: "United States" };
   try {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && "street" in parsed) {
-      return { street: parsed.street ?? "", city: parsed.city ?? "", state: parsed.state ?? "", zip: parsed.zip ?? "", country: parsed.country ?? "Canada" };
+      return { street: parsed.street ?? "", city: parsed.city ?? "", state: parsed.state ?? "", zip: parsed.zip ?? "", country: parsed.country ?? "United States" };
     }
   } catch { /* not JSON, treat as legacy plain string */ }
-  return { street: raw, city: "", state: "", zip: "", country: "Canada" };
+  return { street: raw, city: "", state: "Texas", zip: "", country: "United States" };
 }
 
 export function formatAddressLine(addr: AddressData): string {
@@ -70,7 +70,7 @@ export function AddressFields({ address, onChange }: AddressFieldsProps) {
       </div>
       <div>
         <Label>City</Label>
-        <Input placeholder="Toronto" value={address.city} onChange={(e) => set("city", e.target.value)} />
+        <Input placeholder="Austin" value={address.city} onChange={(e) => set("city", e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>

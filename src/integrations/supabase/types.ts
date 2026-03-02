@@ -1026,6 +1026,7 @@ export type Database = {
       }
       village_groomer: {
         Row: {
+          address: string | null
           created_at: string
           email: string | null
           frequency: string | null
@@ -1042,6 +1043,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           email?: string | null
           frequency?: string | null
@@ -1058,6 +1060,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           email?: string | null
           frequency?: string | null

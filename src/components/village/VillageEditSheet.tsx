@@ -254,6 +254,7 @@ function GroomerFields({ fields, set }: { fields: Record<string, any>; set: (k: 
   const services: string[] = fields.preferred_services ?? [];
   const freq = fields.frequency ?? "";
   const lastAppt = fields.last_appointment_date ? parseISO(fields.last_appointment_date) : null;
+  const address = parseAddress(fields.address);
 
   const getNextAppointment = () => {
     if (!lastAppt || !freq) return null;
@@ -276,6 +277,7 @@ function GroomerFields({ fields, set }: { fields: Record<string, any>; set: (k: 
       <Field label="Groomer Name" value={fields.groomer_name} onChange={(v) => set("groomer_name", v)} />
       <PhoneInput value={fields.phone} onChange={(v) => set("phone", v)} />
       <Field label="Email" value={fields.email} onChange={(v) => set("email", v)} type="email" />
+      <AddressFields address={address} onChange={(a) => set("address", serializeAddress(a))} />
 
       <div>
         <Label>Preferred Services</Label>
