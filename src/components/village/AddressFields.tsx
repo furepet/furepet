@@ -32,14 +32,14 @@ export interface AddressData {
 }
 
 export function parseAddress(raw: string | undefined | null): AddressData {
-  if (!raw) return { street: "", city: "", state: "Texas", zip: "", country: "United States" };
+  if (!raw) return { street: "", city: "", state: "", zip: "", country: "United States" };
   try {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && "street" in parsed) {
       return { street: parsed.street ?? "", city: parsed.city ?? "", state: parsed.state ?? "", zip: parsed.zip ?? "", country: parsed.country ?? "United States" };
     }
   } catch { /* not JSON, treat as legacy plain string */ }
-  return { street: raw, city: "", state: "Texas", zip: "", country: "United States" };
+  return { street: raw, city: "", state: "", zip: "", country: "United States" };
 }
 
 export function formatAddressLine(addr: AddressData): string {
@@ -85,7 +85,7 @@ export function AddressFields({ address, onChange }: AddressFieldsProps) {
         <div>
           <Label>{regionLabel}</Label>
           <Select value={address.state} onValueChange={(v) => set("state", v)}>
-            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select state/province" /></SelectTrigger>
             <SelectContent>
               {regions.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
             </SelectContent>
