@@ -1,0 +1,1 @@
+ALTER TABLE public.village_groomer ADD COLUMN address text DEFAULT ''::text;
