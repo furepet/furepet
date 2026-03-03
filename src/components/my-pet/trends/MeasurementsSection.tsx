@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Pet } from "@/hooks/usePets";
-import { usePetMeasurements, useDeletePetMeasurement } from "@/hooks/usePetMeasurements";
+import { usePetMeasurements, useDeletePetMeasurement, type PetMeasurement } from "@/hooks/usePetMeasurements";
 import { AddMeasurementSheet } from "./AddMeasurementSheet";
+import { EditMeasurementSheet } from "./EditMeasurementSheet";
 import { toast } from "sonner";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export const MeasurementsSection = ({ pet }: Props) => {
   const [addOpen, setAddOpen] = useState(false);
+  const [editMeasurement, setEditMeasurement] = useState<PetMeasurement | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { data: measurements = [], isLoading } = usePetMeasurements(pet.id);
   const deleteMeasurement = useDeletePetMeasurement();
@@ -77,9 +79,14 @@ export const MeasurementsSection = ({ pet }: Props) => {
                           </p>
                           <p className="text-xs text-muted-foreground">{format(parseISO(m.recorded_date), "PPP")}</p>
                         </div>
-                        <button onClick={() => setDeleteId(m.id)} className="text-muted-foreground hover:text-destructive transition-colors p-1">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => setEditMeasurement(m)} className="text-muted-foreground hover:text-primary transition-colors p-1">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={() => setDeleteId(m.id)} className="text-muted-foreground hover:text-destructive transition-colors p-1">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -91,6 +98,7 @@ export const MeasurementsSection = ({ pet }: Props) => {
       )}
 
       <AddMeasurementSheet open={addOpen} onOpenChange={setAddOpen} petId={pet.id} />
+      <EditMeasurementSheet measurement={editMeasurement} onOpenChange={(open) => { if (!open) setEditMeasurement(null); }} petId={pet.id} />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
