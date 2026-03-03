@@ -47,6 +47,20 @@ export const useAddPetMeasurement = () => {
   });
 };
 
+export const useUpdatePetMeasurement = () => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, petId, data }: { id: string; petId: string; data: Record<string, any> }) => {
+      await saveData({ table: "pet_measurements", action: "update", data, match: { id } });
+      return petId;
+    },
+    onSuccess: (petId) => {
+      qc.invalidateQueries({ queryKey: ["pet-measurements", petId] });
+    },
+  });
+};
+
 export const useDeletePetMeasurement = () => {
   const qc = useQueryClient();
 

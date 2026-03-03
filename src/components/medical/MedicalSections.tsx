@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, parseISO, isBefore, differenceInDays } from "date-fns";
+import { format, parseISO, isBefore, differenceInDays, addDays, addWeeks, addMonths } from "date-fns";
 import { Plus, Trash2, Syringe, ClipboardList, Pill, Activity, Brain, AlertTriangle, Eye, ChevronRight, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -38,7 +38,7 @@ const CATEGORIES: CategoryDef[] = [
 ];
 
 const VACCINE_NAMES = ["Rabies", "DHPP/DHLPP", "Bordetella", "Leptospirosis", "Canine Influenza", "Lyme Disease", "FVRCP", "FeLV", "Other"];
-const MED_FREQUENCIES = ["Once daily", "Twice daily", "As needed", "Weekly", "Monthly", "Other"];
+const MED_FREQUENCIES = ["Once daily", "Twice daily", "As needed", "Weekly", "Monthly", "Every 3 months", "Other"];
 const ALLERGY_TYPES = ["Food", "Environmental", "Medication", "Contact", "Other"];
 const OBSERVATION_STATUSES = ["New", "Monitoring", "Vet Reviewed", "Resolved"];
 
@@ -268,7 +268,33 @@ function CategoryDetailSheet({ category, records, petId, onClose, onAdd, onEdit 
   );
 }
 
+function getNextRefillDate(d: Record<string, any>): Date | null {
+  if (d.refill_date) return parseISO(d.refill_date);
+  if (!d.refill_reminder_enabled || !d.start_date || !d.frequency) return null;
+  const start = parseISO(d.start_date);
+  const now = new Date();
+  let next = start;
+  const advance = (dt: Date) => {
+    switch (d.frequency) {
+      case "Weekly": return addWeeks(dt, 1);
+      case "Monthly": return addMonths(dt, 1);
+      case "Every 3 months": return addMonths(dt, 3);
+      case "Once daily": return addMonths(dt, 1);
+      case "Twice daily": return addWeeks(dt, 2);
+      default: return addMonths(dt, 1);
+    }
+  };
+  // Walk forward until we find the next future date
+  for (let i = 0; i < 200 && isBefore(next, now); i++) {
+    next = advance(next);
+  }
+  return next;
+}
+
 function RecordSummary({ category, data: d }: { category: MedicalCategory; data: Record<string, any> }) {
+  const refillDate = category === "medication" && d.refill_reminder_enabled ? getNextRefillDate(d) : null;
+  const refillDays = refillDate ? differenceInDays(refillDate, new Date()) : null;
+
   return (
     <div className="mt-0.5 space-y-0.5">
       {d.status && <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${d.status === "Active" || d.status === "Current" || d.status === "active" ? "bg-primary/10 text-primary" : d.status === "Resolved" || d.status === "resolved" ? "bg-muted text-muted-foreground" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>{d.status}</span>}
@@ -278,6 +304,16 @@ function RecordSummary({ category, data: d }: { category: MedicalCategory; data:
       {d.type && <p className="text-xs text-muted-foreground">Type: {d.type}</p>}
       {d.reaction && <p className="text-xs text-muted-foreground">Reaction: {d.reaction}</p>}
       {d.next_due_date && <p className="text-xs text-primary font-medium">Next due: {format(parseISO(d.next_due_date), "MMM d, yyyy")}</p>}
+      {refillDate && refillDays !== null && refillDays >= 0 && (
+        <p className="text-xs font-medium text-green-600 dark:text-green-400">
+          Next refill in {refillDays} day{refillDays !== 1 ? "s" : ""} ({format(refillDate, "MMM d, yyyy")})
+        </p>
+      )}
+      {refillDate && refillDays !== null && refillDays < 0 && (
+        <p className="text-xs font-medium text-destructive">
+          Refill overdue by {Math.abs(refillDays)} day{Math.abs(refillDays) !== 1 ? "s" : ""}
+        </p>
+      )}
       {d.body_location && <p className="text-xs text-muted-foreground">Location: {d.body_location}</p>}
       {d.notes && <p className="text-xs text-muted-foreground line-clamp-2">{d.notes}</p>}
     </div>
