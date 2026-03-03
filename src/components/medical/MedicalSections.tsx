@@ -486,7 +486,28 @@ function RecordFormSheet({ category, petId, existing, onClose }: { category: Med
                   <Label>Refill Reminder</Label>
                   <Switch checked={refillReminder} onCheckedChange={setRefillReminder} />
                 </div>
-                {refillReminder && <DateFieldStr label="Refill Date" value={refillDate} onChange={setRefillDate} />}
+                {refillReminder && (() => {
+                  const autoRefill = date && frequency ? getNextRefillDate({ start_date: format(date, "yyyy-MM-dd"), frequency, refill_reminder_enabled: true, refill_date: null }) : null;
+                  const autoRefillDays = autoRefill ? differenceInDays(autoRefill, new Date()) : null;
+                  return (
+                    <div className="flex flex-col gap-2">
+                      {!refillDate && autoRefill && autoRefillDays !== null && (
+                        <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-2.5">
+                          <p className="text-xs font-medium text-green-700 dark:text-green-400">
+                            {autoRefillDays >= 0
+                              ? `Next refill in ${autoRefillDays} day${autoRefillDays !== 1 ? "s" : ""} (${format(autoRefill, "MMM d, yyyy")})`
+                              : `Refill overdue by ${Math.abs(autoRefillDays)} day${Math.abs(autoRefillDays) !== 1 ? "s" : ""}`}
+                          </p>
+                          <p className="text-[10px] text-green-600 dark:text-green-500 mt-0.5">Auto-calculated from frequency</p>
+                        </div>
+                      )}
+                      {!refillDate && !autoRefill && frequency && (
+                        <p className="text-xs text-muted-foreground">Set a start date to auto-calculate refill</p>
+                      )}
+                      <DateFieldStr label="Override Refill Date (optional)" value={refillDate} onChange={setRefillDate} />
+                    </div>
+                  );
+                })()}
               </>
             )}
 
