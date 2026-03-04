@@ -73,28 +73,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (mounted) setLoading(false);
     };
 
-    const fetchProfile = async (userId: string, userMeta?: Record<string, any>) => {
-      // Query pets FIRST — if user has any pet, onboarding is done regardless of profile flag
-      const [
-        { data: pets, error: petsError },
-        { data: profile, error: profileError },
-      ] = await Promise.all([
-        supabase.from("pets").select("id").eq("user_id", userId).limit(1),
-        supabase
-          .from("profiles")
-          .select("first_name, onboarding_completed")
-          .eq("user_id", userId)
-          .maybeSingle(),
-      ]);
+    const fetchProfile = async (userId: string, accessToken: string, userMeta?: Record<string, any>) => {
+      // Try client-side pet check first
+      let hasAtLeastOnePet = false;
+      let profileFirstName = userMeta?.first_name || "";
 
-      if (petsError) console.error("Failed to check pet records:", petsError);
-      if (profileError) console.error("Failed to load profile:", profileError);
+      try {
+        const [
+          { data: pets, error: petsError },
+          { data: profile, error: profileError },
+        ] = await Promise.all([
+          supabase.from("pets").select("id").eq("user_id", userId).limit(1),
+          supabase
+            .from("profiles")
+            .select("first_name")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+
+        if (petsError) console.error("Client pet check failed:", petsError);
+        if (profileError) console.error("Client profile check failed:", profileError);
+
+        hasAtLeastOnePet = (pets?.length ?? 0) > 0;
+        profileFirstName = profile?.first_name || profileFirstName;
+
+        // If client query returned empty but no error, it might be RLS blocking
+        // due to session not being set on the client. Try server-side fallback.
+        if (!hasAtLeastOnePet && !petsError) {
+          console.info("Client pet check returned 0 — trying server-side fallback…");
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/pets?user_id=eq.${userId}&select=id&limit=1`,
+              {
+                headers: {
+                  "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  "Authorization": `Bearer ${accessToken}`,
+                },
+              }
+            );
+            if (res.ok) {
+              const serverPets = await res.json();
+              hasAtLeastOnePet = Array.isArray(serverPets) && serverPets.length > 0;
+              if (hasAtLeastOnePet) console.info("Server-side fallback confirmed pets exist");
+            }
+          } catch (fetchErr) {
+            console.error("Server-side pet check failed:", fetchErr);
+          }
+        }
+      } catch (err) {
+        console.error("fetchProfile error:", err);
+      }
+
       if (!mounted) return;
 
-      const hasAtLeastOnePet = (pets?.length ?? 0) > 0;
-      setFirstName(profile?.first_name || userMeta?.first_name || "");
-      // Pet existence is the PRIMARY check — profile flag is secondary
-      setOnboardingCompleted(hasAtLeastOnePet || Boolean(profile?.onboarding_completed));
+      setFirstName(profileFirstName);
+      // Pet existence is the ONLY check — no reliance on profile flags
+      setOnboardingCompleted(hasAtLeastOnePet);
     };
 
     // Hard cap: never show loading for more than 5 seconds
@@ -115,7 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         setSession(session);
         setUser(session.user);
-        await fetchProfile(session.user.id, session.user.user_metadata);
+        await fetchProfile(session.user.id, session.access_token, session.user.user_metadata);
         if (mounted) markResolved();
         return;
       }
@@ -127,9 +161,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (recovered?.user) {
         console.info("Recovered session from localStorage");
+        // Set session on the Supabase client so RLS queries work
+        try { await supabase.auth.setSession({ access_token: recovered.access_token, refresh_token: recovered.refresh_token }); } catch {}
         setSession(recovered);
         setUser(recovered.user);
-        await fetchProfile(recovered.user.id, recovered.user.user_metadata);
+        await fetchProfile(recovered.user.id, recovered.access_token, recovered.user.user_metadata);
         if (mounted) markResolved();
       } else {
         // No session anywhere — unblock UI so it redirects to /auth
@@ -147,7 +183,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          await fetchProfile(newSession.user.id, newSession.user.user_metadata);
+          await fetchProfile(newSession.user.id, newSession.access_token, newSession.user.user_metadata);
         } else {
           setFirstName("");
           setOnboardingCompleted(false);
