@@ -359,7 +359,11 @@ const Onboarding = () => {
             onSkip={() => setStep(5)}
           />
         ) : (
-          <PremiumUpsell saving={saving} onChoosePremium={() => savePet(true)} onChooseFree={() => savePet(false)} />
+          <PremiumUpsell saving={saving} onChoosePremium={() => savePet(false).then(() => {
+            supabase.functions.invoke("create-checkout").then(({ data }) => {
+              if (data?.url) window.open(data.url, "_blank");
+            });
+          })} onChooseFree={() => savePet(false)} />
         )}
       </div>
 
