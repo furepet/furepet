@@ -74,60 +74,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const fetchProfile = async (userId: string, accessToken: string, userMeta?: Record<string, any>) => {
-      // Try client-side pet check first
       let hasAtLeastOnePet = false;
-      let profileFirstName = userMeta?.first_name || "";
+      const profileFirstName = userMeta?.first_name || "";
 
+      // Use save-data edge function "check" action — bypasses client auth lock
       try {
-        const [
-          { data: pets, error: petsError },
-          { data: profile, error: profileError },
-        ] = await Promise.all([
-          supabase.from("pets").select("id").eq("user_id", userId).limit(1),
-          supabase
-            .from("profiles")
-            .select("first_name")
-            .eq("user_id", userId)
-            .maybeSingle(),
-        ]);
-
-        if (petsError) console.error("Client pet check failed:", petsError);
-        if (profileError) console.error("Client profile check failed:", profileError);
-
-        hasAtLeastOnePet = (pets?.length ?? 0) > 0;
-        profileFirstName = profile?.first_name || profileFirstName;
-
-        // If client query returned empty but no error, it might be RLS blocking
-        // due to session not being set on the client. Try server-side fallback.
-        if (!hasAtLeastOnePet && !petsError) {
-          console.info("Client pet check returned 0 — trying server-side fallback…");
-          try {
-            const res = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/pets?user_id=eq.${userId}&select=id&limit=1`,
-              {
-                headers: {
-                  "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                  "Authorization": `Bearer ${accessToken}`,
-                },
-              }
-            );
-            if (res.ok) {
-              const serverPets = await res.json();
-              hasAtLeastOnePet = Array.isArray(serverPets) && serverPets.length > 0;
-              if (hasAtLeastOnePet) console.info("Server-side fallback confirmed pets exist");
-            }
-          } catch (fetchErr) {
-            console.error("Server-side pet check failed:", fetchErr);
-          }
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const url = `https://${projectId}.supabase.co/functions/v1/save-data`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ table: "pets", action: "check" }),
+        });
+        if (res.ok) {
+          const body = await res.json();
+          hasAtLeastOnePet = Boolean(body?.exists);
+          console.info("Edge function pet check:", body);
+        } else {
+          console.error("Edge function pet check failed:", res.status);
         }
       } catch (err) {
-        console.error("fetchProfile error:", err);
+        console.error("fetchProfile edge function error:", err);
       }
 
       if (!mounted) return;
 
       setFirstName(profileFirstName);
-      // Pet existence is the ONLY check — no reliance on profile flags
       setOnboardingCompleted(hasAtLeastOnePet);
     };
 
