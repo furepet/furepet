@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { PawPrint } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import SplashScreen from "./components/SplashScreen";
 import AppShell from "./components/AppShell";
@@ -26,9 +27,21 @@ import ResetPassword from "./pages/auth/ResetPassword";
 
 const queryClient = new QueryClient();
 
+const AuthLoadingScreen = () => (
+  <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-primary">
+    <div className="flex flex-col items-center gap-4">
+      <div className="rounded-full bg-primary-foreground/20 p-6">
+        <PawPrint className="h-16 w-16 text-primary-foreground animate-pulse" strokeWidth={2.5} />
+      </div>
+      <h1 className="text-3xl font-bold text-primary-foreground tracking-tight">FurePET</h1>
+      <p className="text-primary-foreground/70 text-sm">Loading your pet data…</p>
+    </div>
+  </div>
+);
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
-  if (loading) return null;
+  if (loading) return <AuthLoadingScreen />;
   if (!session) return <Navigate to="/auth" replace />;
   if (!onboardingCompleted) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
@@ -36,7 +49,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
-  if (loading) return null;
+  if (loading) return <AuthLoadingScreen />;
   if (!session) return <Navigate to="/auth" replace />;
   if (onboardingCompleted) return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -44,7 +57,7 @@ const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <AuthLoadingScreen />;
   if (session) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
