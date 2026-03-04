@@ -17,16 +17,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 /** Try to recover a session from localStorage when getSession hangs */
 const recoverSessionFromStorage = (): Session | null => {
   try {
-    const raw = localStorage.getItem("furepet-auth") || localStorage.getItem("sb-sxzrzkgodbounjvrjcuj-auth-token");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed?.access_token && parsed?.user) return parsed as Session;
-    // Some versions nest under currentSession
-    if (parsed?.currentSession?.access_token) return parsed.currentSession as Session;
+    // Try all known Supabase storage key patterns
+    const keys = [
+      "sb-sxzrzkgodbounjvrjcuj-auth-token",
+      "furepet-auth",
+    ];
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      // Supabase stores session directly or nested
+      if (parsed?.access_token && parsed?.user) return parsed as Session;
+      if (parsed?.currentSession?.access_token) return parsed.currentSession as Session;
+      // Some versions nest under session key
+      if (parsed?.session?.access_token && parsed?.session?.user) return parsed.session as Session;
+    }
     return null;
   } catch {
     return null;
   }
+};
+
+/** Race getSession against a timeout to avoid auth lock hangs */
+const getSessionWithTimeout = (ms: number): Promise<Session | null> => {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      console.warn(`getSession timed out after ${ms}ms`);
+      resolve(null);
+    }, ms);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timer);
+      resolve(session);
+    }).catch((err) => {
+      clearTimeout(timer);
+      console.error("getSession error:", err);
+      resolve(null);
+    });
+  });
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -69,53 +97,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setOnboardingCompleted(hasAtLeastOnePet || Boolean(profile?.onboarding_completed));
     };
 
-    // Safety timeout: if auth check hangs, try localStorage recovery
-    const safetyTimeout = setTimeout(() => {
+    // Hard cap: never show loading for more than 5 seconds
+    const hardCap = setTimeout(() => {
       if (!mounted || resolved) return;
-      console.warn("Auth check timed out after 3s — attempting localStorage recovery");
+      console.warn("Hard cap reached (5s) — forcing loading=false");
+      markResolved();
+    }, 5000);
 
+    // Try getSession with 3s timeout, then fall back to localStorage
+    const init = async () => {
+      if (!mounted || resolved) return;
+
+      const session = await getSessionWithTimeout(3000);
+
+      if (!mounted || resolved) return;
+
+      if (session?.user) {
+        setSession(session);
+        setUser(session.user);
+        await fetchProfile(session.user.id, session.user.user_metadata);
+        if (mounted) markResolved();
+        return;
+      }
+
+      // getSession returned null or timed out — try localStorage
+      console.info("Attempting localStorage session recovery…");
       const recovered = recoverSessionFromStorage();
+      if (!mounted || resolved) return;
+
       if (recovered?.user) {
         console.info("Recovered session from localStorage");
         setSession(recovered);
         setUser(recovered.user);
-        // Fetch profile in background, but unblock UI now
-        fetchProfile(recovered.user.id, recovered.user.user_metadata).finally(() => {
-          if (mounted) markResolved();
-        });
+        await fetchProfile(recovered.user.id, recovered.user.user_metadata);
+        if (mounted) markResolved();
       } else {
-        // No session recoverable — unblock UI cleanly (will redirect to /auth)
-        console.info("No recoverable session — clearing loading state");
+        // No session anywhere — unblock UI so it redirects to /auth
+        console.info("No recoverable session — redirecting to login");
         markResolved();
       }
-    }, 3000);
+    };
 
-    // Initialize from getSession
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      if (!mounted || resolved) return;
-      clearTimeout(safetyTimeout);
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      if (currentSession?.user) {
-        await fetchProfile(currentSession.user.id, currentSession.user.user_metadata);
-      }
-      if (mounted) markResolved();
-    }).catch((err) => {
-      console.error("getSession failed:", err);
-      if (!mounted || resolved) return;
-      clearTimeout(safetyTimeout);
-      // Try localStorage fallback on error too
-      const recovered = recoverSessionFromStorage();
-      if (recovered?.user) {
-        setSession(recovered);
-        setUser(recovered.user);
-        fetchProfile(recovered.user.id, recovered.user.user_metadata).finally(() => {
-          if (mounted) markResolved();
-        });
-      } else {
-        markResolved();
-      }
-    });
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
@@ -135,7 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
+      clearTimeout(hardCap);
       subscription.unsubscribe();
     };
   }, []);
