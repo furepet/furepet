@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Heart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { CprIllustration } from "./CprIllustrations";
 import {
   Accordion,
   AccordionContent,
@@ -162,12 +161,9 @@ const CprGuide = () => {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-3 pb-3">
-              <div className="pl-10">
-                <CprIllustration stepIndex={i} species={species as "dog" | "cat"} />
-                <p className="text-sm text-foreground leading-relaxed">
-                  {step.instruction}
-                </p>
-              </div>
+              <p className="text-sm text-foreground leading-relaxed pl-10">
+                {step.instruction}
+              </p>
             </AccordionContent>
           </AccordionItem>
         ))}
