@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   PawPrint,
   Users,
@@ -43,12 +43,23 @@ const formatAge = (dob: string | null): string | null => {
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { firstName } = useAuth();
   const { data: pets = [], isLoading } = usePets();
 
   const [activePetId, setActivePetId] = useState<string | null>(null);
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  // Handle post-checkout redirect
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (checkout === "success") {
+      searchParams.delete("checkout");
+      setSearchParams(searchParams, { replace: true });
+      // The check-subscription hook will auto-sync premium status
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!isLoading) return;

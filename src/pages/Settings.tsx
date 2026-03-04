@@ -37,6 +37,7 @@ import { saveData } from "@/lib/saveData";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
+import { useSubscription } from "@/hooks/useSubscription";
 
 /* ── Section Header ── */
 const SectionHeader = ({ children }: { children: React.ReactNode }) => (
@@ -89,6 +90,7 @@ const Settings = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { theme, setTheme } = useTheme();
+  const { subscribed, openPortal } = useSubscription();
 
   // Edit profile state
   const [editNameOpen, setEditNameOpen] = useState(false);
@@ -289,9 +291,14 @@ const Settings = () => {
           icon={Crown}
           label="Subscription"
           desc={isPremium ? "Premium — $4.99/month" : "Free plan"}
+          onClick={isPremium ? async () => {
+            try { await openPortal(); } catch (err: any) {
+              toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
+          } : undefined}
           trailing={
             isPremium ? (
-              <span className="text-xs font-medium text-primary">Active</span>
+              <span className="text-xs font-medium text-primary">Manage →</span>
             ) : (
               <Button size="sm" variant="default" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setPremiumOpen(true); }}>
                 Upgrade
@@ -573,38 +580,7 @@ const Settings = () => {
       </AlertDialog>
 
       {/* Premium Upsell */}
-      <PremiumLockSheet
-        open={premiumOpen}
-        onOpenChange={setPremiumOpen}
-        onStartPremium={async () => {
-          if (!user) return;
-          setUpgradingSub(true);
-          try {
-            await saveData({
-              table: "profiles",
-              action: "update",
-              data: { subscription_status: "premium" },
-              filters: { user_id: user.id },
-            });
-            if (activePet) {
-              await saveData({
-                table: "pets",
-                action: "update",
-                data: { is_premium: true },
-                filters: {},
-              });
-            }
-            setUpgradingSub(false);
-            setPremiumOpen(false);
-            toast({ title: "Welcome to Premium! 🎉" });
-            window.location.reload();
-          } catch (err: any) {
-            toast({ title: "Error", description: err.message, variant: "destructive" });
-            setUpgradingSub(false);
-          }
-        }}
-        upgrading={upgradingSub}
-      />
+      <PremiumLockSheet open={premiumOpen} onOpenChange={setPremiumOpen} />
     </div>
   );
 };
