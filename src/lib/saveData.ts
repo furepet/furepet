@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface SaveDataParams {
   table: string;
-  action: "insert" | "update" | "delete" | "upsert";
+  action: "insert" | "update" | "delete" | "upsert" | "check";
   data?: Record<string, any>;
   match?: { id: string };
   filters?: Record<string, any>;

@@ -76,6 +76,18 @@ Deno.serve(async (req) => {
     let result;
 
     switch (action) {
+      case "check": {
+        // Simple existence check — returns { exists: true/false }
+        const { data: rows, error } = await serviceClient
+          .from(table)
+          .select("id")
+          .eq("user_id", userId)
+          .limit(1);
+        if (error) throw error;
+        result = { exists: (rows?.length ?? 0) > 0, count: rows?.length ?? 0 };
+        break;
+      }
+
       case "insert": {
         const insertData = { ...data, user_id: userId };
         const { data: inserted, error } = await serviceClient
