@@ -36,7 +36,7 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: "price_1T7KdTHpv0P9Zfb2DvyGwe9V", quantity: 1 }],
+      line_items: [{ price: "price_1T7KdTHpvOP9Zfb2DvyGwe9V", quantity: 1 }],
       mode: "subscription",
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancelled`,
