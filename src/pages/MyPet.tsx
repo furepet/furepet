@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PawPrint, TrendingUp, Lock, Rainbow } from "lucide-react";
-import { usePets } from "@/hooks/usePets";
+import { useActivePet } from "@/contexts/ActivePetContext";
 import { PetBasics } from "@/components/my-pet/PetBasics";
 import { PhysicalTrends } from "@/components/my-pet/PhysicalTrends";
 import { RainbowBridge } from "@/components/my-pet/RainbowBridge";
@@ -10,11 +10,9 @@ type SubTab = "basics" | "trends" | "memorial";
 
 const MyPet = () => {
   const [activeTab, setActiveTab] = useState<SubTab>("basics");
-  const { data: pets = [], isLoading } = usePets();
+  const { activePet, isLoading, isPremium } = useActivePet();
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
 
-  const activePet = pets[0] ?? null;
-  const isPremium = activePet?.is_premium ?? false;
   const isDeceased = activePet?.is_deceased ?? false;
 
   const tabs: { key: SubTab; label: string; icon: React.ElementType; locked?: boolean; hidden?: boolean }[] = [
@@ -47,7 +45,6 @@ const MyPet = () => {
     <div className="flex flex-col gap-5">
       <h2 className="text-xl font-semibold text-foreground">My Pet</h2>
 
-      {/* Sub-navigation */}
       <div className="flex gap-2 overflow-x-auto">
         {visibleTabs.map((tab) => (
           <button
