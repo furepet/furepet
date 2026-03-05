@@ -415,7 +415,7 @@ const Settings = () => {
       {/* ── SUPPORT ── */}
       <SectionHeader>Support</SectionHeader>
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <MenuRow icon={HelpCircle} label="Help & FAQ" onClick={() => {}} />
+        <MenuRow icon={HelpCircle} label="Help & FAQ" onClick={() => navigate("/more/help")} />
         <Separator />
         <MenuRow
           icon={MessageSquare}
@@ -424,15 +424,15 @@ const Settings = () => {
           onClick={() => window.open("mailto:hello@furepet.com", "_blank")}
         />
         <Separator />
-        <MenuRow icon={Star} label="Rate FurePET" onClick={() => {}} />
+        <MenuRow icon={Star} label="Rate FurePET" onClick={() => toast({ title: "Coming Soon", description: "FurePET isn't in the App Store yet — but we'd love your rating when we launch! 🐾" })} />
       </div>
 
       {/* ── LEGAL ── */}
       <SectionHeader>Legal</SectionHeader>
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <MenuRow icon={FileText} label="Terms of Service" onClick={() => {}} />
+        <MenuRow icon={FileText} label="Terms of Service" onClick={() => navigate("/more/terms")} />
         <Separator />
-        <MenuRow icon={Shield} label="Privacy Policy" onClick={() => {}} />
+        <MenuRow icon={Shield} label="Privacy Policy" onClick={() => navigate("/more/privacy")} />
       </div>
 
       {/* ── DANGER ZONE ── */}

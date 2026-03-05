@@ -21,6 +21,9 @@ import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import NotificationSettings from "./pages/NotificationSettings";
 import Settings from "./pages/Settings";
+import HelpFaq from "./pages/HelpFaq";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import SignUp from "./pages/auth/SignUp";
 import Login from "./pages/auth/Login";
 import VerifyEmail from "./pages/auth/VerifyEmail";
@@ -95,6 +98,9 @@ const AppRoutes = () => {
           <Route path="/more/ai-chat" element={<AiChat />} />
           <Route path="/more/notifications" element={<NotificationSettings />} />
           <Route path="/more/settings" element={<Settings />} />
+          <Route path="/more/help" element={<HelpFaq />} />
+          <Route path="/more/terms" element={<TermsOfService />} />
+          <Route path="/more/privacy" element={<PrivacyPolicy />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
