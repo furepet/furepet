@@ -90,7 +90,7 @@ const Settings = () => {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { theme, setTheme } = useTheme();
-  const { subscribed, openPortal } = useSubscription();
+  const { subscribed, openPortal, checkSubscription } = useSubscription();
 
   // Edit profile state
   const [editNameOpen, setEditNameOpen] = useState(false);
@@ -254,7 +254,7 @@ const Settings = () => {
   };
 
   const activePet = pets[0];
-  const isPremium = activePet?.is_premium ?? false;
+  const isPremium = subscribed;
 
   return (
     <div className="flex flex-col gap-4 pb-8">

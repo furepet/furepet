@@ -67,7 +67,18 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const sub = subscriptions.data[0];
-      subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+      try {
+        // current_period_end may be a number (unix) or string depending on Stripe API version
+        const endVal = sub.current_period_end;
+        if (typeof endVal === "number") {
+          subscriptionEnd = new Date(endVal * 1000).toISOString();
+        } else if (typeof endVal === "string") {
+          subscriptionEnd = new Date(endVal).toISOString();
+        }
+      } catch (dateErr) {
+        logStep("Date conversion warning", { raw: sub.current_period_end });
+        // Don't fail the whole function over a date format issue
+      }
       logStep("Active subscription", { end: subscriptionEnd });
     } else {
       logStep("No active subscription");
