@@ -436,12 +436,82 @@ const Onboarding = () => {
             onSkip={() => setStep(5)}
           />
         ) : (
-          <PremiumUpsell saving={saving} onChoosePremium={() => savePet(false).then(() => {
-            supabase.functions.invoke("create-checkout").then(({ data, error }) => {
-              if (error) { console.error("create-checkout error:", error); return; }
-              if (data?.url) window.location.href = data.url;
-            });
-          })} onChooseFree={() => savePet(false)} />
+          <PremiumUpsell saving={saving} onChoosePremium={async () => {
+            // Save pet first, then redirect to Stripe checkout (don't navigate to home)
+            if (!user || !session) { navigate("/", { replace: true }); return; }
+            setSaving(true);
+            const petPayload = buildPetPayload(
+              petName, nickname, species, dateOfBirth, togetherSince,
+              breed, microchipNumber, neuterSpayStatus, neuterSpayDate,
+              hasInsurance, insuranceCompany, policyNumber,
+            );
+            try {
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+              const response = await fetch(`${supabaseUrl}/functions/v1/complete-onboarding`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ pet: petPayload, isPremium: true }),
+              });
+              const result = await response.json();
+              if (!response.ok || !result.success) throw new Error(result.error || "Failed to save pet data");
+
+              // Upload photo in background
+              if (photoFile && result.petId) {
+                const petId = result.petId;
+                const accessToken = session.access_token;
+                const uid = user.id;
+                const file = photoFile;
+                setTimeout(async () => {
+                  try {
+                    const ext = file.name.split(".").pop();
+                    const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+                    const formData = new FormData();
+                    formData.append("", file);
+                    const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/pet-photos/${path}`, {
+                      method: "POST",
+                      headers: { "Authorization": `Bearer ${accessToken}` },
+                      body: formData,
+                    });
+                    if (uploadRes.ok) {
+                      const publicUrl = `${supabaseUrl}/storage/v1/object/public/pet-photos/${path}`;
+                      await fetch(`${supabaseUrl}/rest/v1/pets?id=eq.${petId}&user_id=eq.${uid}`, {
+                        method: "PATCH",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "Authorization": `Bearer ${accessToken}`,
+                          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                        },
+                        body: JSON.stringify({ photo_url: publicUrl }),
+                      });
+                    }
+                  } catch (e) { console.warn("Background photo upload failed:", e); }
+                }, 0);
+              }
+
+              completeOnboarding();
+
+              // Now redirect to Stripe checkout
+              const { data, error } = await supabase.functions.invoke("create-checkout");
+              if (error) throw error;
+              if (data?.url) {
+                window.location.href = data.url;
+              } else {
+                // Fallback: go to home if no checkout URL
+                window.location.href = "/";
+              }
+            } catch (err) {
+              console.error("Premium checkout error:", err);
+              toast({
+                title: "Unable to start checkout",
+                description: err instanceof Error ? err.message : "Something went wrong.",
+                variant: "destructive",
+              });
+              setSaving(false);
+            }
+          }} onChooseFree={() => savePet(false)} />
         )}
       </div>
 
