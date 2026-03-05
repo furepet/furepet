@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Lock, Share2 } from "lucide-react";
-import { usePets } from "@/hooks/usePets";
+import { useActivePet } from "@/contexts/ActivePetContext";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
 import { DocumentUpload } from "@/components/medical/DocumentUpload";
 import { DocumentGallery } from "@/components/medical/DocumentGallery";
@@ -8,12 +8,9 @@ import { MedicalSections } from "@/components/medical/MedicalSections";
 import { SharePetSheet } from "@/components/share/SharePetSheet";
 
 const Medical = () => {
-  const { data: pets = [], isLoading } = usePets();
+  const { activePet, isLoading, isPremium } = useActivePet();
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-
-  const activePet = pets[0] ?? null;
-  const isPremium = activePet?.is_premium ?? false;
 
   if (isLoading) {
     return (

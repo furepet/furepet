@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
-import { usePets } from "@/hooks/usePets";
+import { useActivePet } from "@/contexts/ActivePetContext";
 import { VillageHub } from "@/components/village/VillageHub";
 import { PremiumLockSheet } from "@/components/home/PremiumLockSheet";
 
 const Village = () => {
-  const { data: pets = [], isLoading } = usePets();
+  const { activePet, isLoading, isPremium } = useActivePet();
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
-
-  const activePet = pets[0] ?? null;
-  const isPremium = activePet?.is_premium ?? false;
 
   if (isLoading) {
     return (

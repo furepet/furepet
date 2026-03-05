@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { PawPrint } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ActivePetProvider } from "@/contexts/ActivePetContext";
 import SplashScreen from "./components/SplashScreen";
 import AppShell from "./components/AppShell";
 import Index from "./pages/Index";
@@ -84,7 +85,7 @@ const AppRoutes = () => {
         <Route path="/onboarding" element={<OnboardingRoute><Onboarding /></OnboardingRoute>} />
 
         {/* Protected app routes */}
-        <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute><ActivePetProvider><AppShell /></ActivePetProvider></ProtectedRoute>}>
           <Route path="/" element={<Index />} />
           <Route path="/my-pet" element={<MyPet />} />
           <Route path="/village" element={<Village />} />
