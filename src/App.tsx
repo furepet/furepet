@@ -51,7 +51,9 @@ const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
   if (loading) return <AuthLoadingScreen />;
   if (!session) return <Navigate to="/auth" replace />;
-  if (onboardingCompleted) return <Navigate to="/" replace />;
+  // Allow access with ?addPet=true even if onboarding is completed
+  const isAddPet = new URLSearchParams(window.location.search).get("addPet") === "true";
+  if (onboardingCompleted && !isAddPet) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
