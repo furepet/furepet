@@ -112,7 +112,7 @@ const Index = () => {
           title="No pets found"
           description="Add your first pet to get started!"
           actionLabel="Add a Pet"
-          onAction={() => navigate("/onboarding")}
+          onAction={() => navigate("/onboarding?addPet=true")}
         />
       </div>
     );
@@ -134,7 +134,7 @@ const Index = () => {
           pets={pets}
           activePetId={activePet?.id ?? ""}
           onSelectPet={setActivePetId}
-          onAddPet={() => navigate("/onboarding")}
+          onAddPet={() => navigate("/onboarding?addPet=true")}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { format } from "date-fns";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PawPrint, Camera } from "lucide-react";
 import { NotificationPermission } from "@/components/onboarding/NotificationPermission";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
@@ -24,7 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS_ONBOARDING = 5;
+const TOTAL_STEPS_ADD_PET = 3;
 
 const buildPetPayload = (
   petName: string,
@@ -58,10 +59,13 @@ const buildPetPayload = (
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isAddPetMode = searchParams.get("addPet") === "true";
   const { user, session, completeOnboarding } = useAuth();
   const { toast } = useToast();
   const { subscribe } = usePushSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const TOTAL_STEPS = isAddPetMode ? TOTAL_STEPS_ADD_PET : TOTAL_STEPS_ONBOARDING;
 
   const [step, setStep] = useState(1);
   const [petName, setPetName] = useState("");
@@ -138,8 +142,74 @@ const Onboarding = () => {
     );
 
     try {
-      // Use raw fetch() to call the edge function — bypasses client-side auth lock entirely
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      if (isAddPetMode) {
+        // In add-pet mode, use save-data edge function (no profile update needed)
+        const response = await fetch(`${supabaseUrl}/functions/v1/save-data`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            table: "pets",
+            action: "insert",
+            data: { ...petPayload, user_id: user.id },
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to save pet data");
+        }
+
+        const petId = result?.id ?? result?.[0]?.id;
+        console.log("Add pet: saved via save-data, id:", petId);
+
+        // Fire-and-forget photo upload
+        if (photoFile && petId) {
+          const accessToken = session.access_token;
+          const uid = user.id;
+          const file = photoFile;
+          setTimeout(async () => {
+            try {
+              const ext = file.name.split(".").pop();
+              const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+              const formData = new FormData();
+              formData.append("", file);
+              const uploadRes = await fetch(
+                `${supabaseUrl}/storage/v1/object/pet-photos/${path}`,
+                {
+                  method: "POST",
+                  headers: { "Authorization": `Bearer ${accessToken}` },
+                  body: formData,
+                }
+              );
+              if (uploadRes.ok) {
+                const publicUrl = `${supabaseUrl}/storage/v1/object/public/pet-photos/${path}`;
+                await fetch(`${supabaseUrl}/rest/v1/pets?id=eq.${petId}&user_id=eq.${uid}`, {
+                  method: "PATCH",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`,
+                    "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  },
+                  body: JSON.stringify({ photo_url: publicUrl }),
+                });
+              }
+            } catch (e) {
+              console.warn("Background photo upload failed:", e);
+            }
+          }, 0);
+        }
+
+        toast({ title: "Pet added!", description: `${petName} has been added to your account.` });
+        navigate("/", { replace: true });
+        return;
+      }
+
+      // Original onboarding flow
       const response = await fetch(`${supabaseUrl}/functions/v1/complete-onboarding`, {
         method: "POST",
         headers: {
@@ -157,10 +227,9 @@ const Onboarding = () => {
 
       console.log("Onboarding: pet saved via edge function, id:", result.petId);
 
-      // Redirect immediately — don't wait for photo upload
       completeOnboarding();
 
-      // Fire-and-forget photo upload using raw fetch to avoid auth lock
+      // Fire-and-forget photo upload
       if (photoFile && result.petId) {
         const petId = result.petId;
         const accessToken = session.access_token;
@@ -176,9 +245,7 @@ const Onboarding = () => {
               `${supabaseUrl}/storage/v1/object/pet-photos/${path}`,
               {
                 method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${accessToken}`,
-                },
+                headers: { "Authorization": `Bearer ${accessToken}` },
                 body: formData,
               }
             );
@@ -233,7 +300,15 @@ const Onboarding = () => {
       setStep(3);
       return;
     }
-    if (step === 3) { setStep(4); return; }
+    if (step === 3) {
+      if (isAddPetMode) {
+        // In add-pet mode, save directly after health basics
+        await savePet(false);
+        return;
+      }
+      setStep(4);
+      return;
+    }
     if (step === 4) { setStep(5); return; }
   };
 
@@ -253,7 +328,9 @@ const Onboarding = () => {
       <div className="flex-1 px-4 pb-8 max-w-lg mx-auto w-full">
         {step === 1 ? (
           <>
-            <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">Let's meet your pet! 🐾</h1>
+            <h1 className="text-2xl font-bold text-foreground mt-6 mb-1">
+              {isAddPetMode ? "Add a new pet! 🐾" : "Let's meet your pet! 🐾"}
+            </h1>
             <p className="text-muted-foreground text-sm mb-8">Tell us about your furry friend.</p>
 
             <div className="flex flex-col items-center mb-8">
@@ -368,14 +445,21 @@ const Onboarding = () => {
         )}
       </div>
 
-      {step < 4 && (
+      {(isAddPetMode ? step <= TOTAL_STEPS : step < 4) && (
         <div className="sticky bottom-0 bg-background border-t border-border p-4 max-w-lg mx-auto w-full">
-          {step === 1 ? (
+          {step === 1 && !isAddPetMode ? (
             <Button type="button" onClick={handleNext} className="w-full h-12 text-base font-semibold">Next</Button>
+          ) : step === 1 && isAddPetMode ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Button type="button" variant="outline" onClick={() => navigate(-1)} className="h-12 text-base font-semibold">Cancel</Button>
+              <Button type="button" onClick={handleNext} className="h-12 text-base font-semibold">Next</Button>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <Button type="button" variant="outline" onClick={() => setStep(step - 1)} disabled={saving} className="h-12 text-base font-semibold">Back</Button>
-              <Button type="button" onClick={handleNext} disabled={saving} className="h-12 text-base font-semibold">Next</Button>
+              <Button type="button" onClick={handleNext} disabled={saving} className="h-12 text-base font-semibold">
+                {isAddPetMode && step === TOTAL_STEPS ? (saving ? "Saving…" : "Save Pet") : "Next"}
+              </Button>
             </div>
           )}
         </div>

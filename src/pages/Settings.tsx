@@ -342,7 +342,7 @@ const Settings = () => {
         ))}
         <Separator />
         <button
-          onClick={() => navigate("/onboarding")}
+          onClick={() => navigate("/onboarding?addPet=true")}
           className="flex w-full items-center gap-3 px-3.5 py-3 text-left text-primary hover:bg-accent transition-colors"
         >
           <Plus className="h-5 w-5" />
