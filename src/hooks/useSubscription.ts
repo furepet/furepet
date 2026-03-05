@@ -17,7 +17,7 @@ export const useSubscription = () => {
   });
 
   const checkSubscription = useCallback(async () => {
-    if (!session?.access_token) {
+    if (!session?.access_token || !session?.user?.id) {
       setState({ subscribed: false, subscriptionEnd: null, loading: false });
       return;
     }
@@ -34,7 +34,7 @@ export const useSubscription = () => {
       console.error("check-subscription error:", err);
       setState((prev) => ({ ...prev, loading: false }));
     }
-  }, [session?.access_token]);
+  }, [session?.access_token, session?.user?.id]);
 
   useEffect(() => {
     checkSubscription();
