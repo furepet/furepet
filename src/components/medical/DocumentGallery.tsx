@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { FileText, Image, Trash2, FolderOpen } from "lucide-react";
+import { FileText, Image, Trash2, Download, FolderOpen } from "lucide-react";
 import { useMedicalDocuments, useDeleteMedicalDocument } from "@/hooks/useMedicalRecords";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -22,16 +22,39 @@ export const DocumentGallery = ({ petId, onUpload }: Props) => {
       <EmptyState
         icon={FolderOpen}
         title="No documents uploaded"
-        description="Upload medical records, lab results, or vet notes for AI-powered extraction."
+        description="Upload medical records, lab results, or vet notes to keep them safe and accessible."
         actionLabel="Upload Records"
         onAction={onUpload}
       />
     );
   }
 
-  const viewDoc = async (filePath: string) => {
+  const getSignedUrl = async (filePath: string) => {
     const { data } = await supabase.storage.from("medical-documents").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    return data?.signedUrl;
+  };
+
+  const viewDoc = async (filePath: string) => {
+    const url = await getSignedUrl(filePath);
+    if (url) window.open(url, "_blank");
+  };
+
+  const downloadDoc = async (filePath: string, fileName: string) => {
+    try {
+      const url = await getSignedUrl(filePath);
+      if (!url) { toast.error("Could not generate download link"); return; }
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch {
+      toast.error("Download failed");
+    }
   };
 
   return (
@@ -49,17 +72,22 @@ export const DocumentGallery = ({ petId, onUpload }: Props) => {
                 <p className="text-[10px] text-foreground truncate">{doc.file_name}</p>
                 <p className="text-[9px] text-muted-foreground">{format(parseISO(doc.created_at), "MMM d")}</p>
               </button>
-              <button
-                onClick={() => setDeleteTarget({ id: doc.id, filePath: doc.file_path })}
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded bg-destructive/10 text-destructive transition-opacity"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-              {doc.status === "processing" && (
-                <div className="absolute inset-0 bg-background/60 rounded-lg flex items-center justify-center">
-                  <p className="text-[10px] text-primary font-medium animate-pulse">Analyzing…</p>
-                </div>
-              )}
+              <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => downloadDoc(doc.file_path, doc.file_name)}
+                  className="p-1 rounded bg-primary/10 text-primary"
+                  aria-label="Download"
+                >
+                  <Download className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => setDeleteTarget({ id: doc.id, filePath: doc.file_path })}
+                  className="p-1 rounded bg-destructive/10 text-destructive"
+                  aria-label="Delete"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           );
         })}
