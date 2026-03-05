@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,10 +50,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const OnboardingRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
+  const [searchParams] = useSearchParams();
   if (loading) return <AuthLoadingScreen />;
   if (!session) return <Navigate to="/auth" replace />;
   // Allow access with ?addPet=true even if onboarding is completed
-  const isAddPet = new URLSearchParams(window.location.search).get("addPet") === "true";
+  const isAddPet = searchParams.get("addPet") === "true";
   if (onboardingCompleted && !isAddPet) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
