@@ -130,11 +130,18 @@ const Index = () => {
           <CardContent className="flex items-center gap-4 p-4">
             <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/10 overflow-hidden">
               {activePet.photo_url ? (
-                <img
-                  src={activePet.photo_url}
-                  alt={`Photo of ${activePet.pet_name}`}
-                  className={`h-20 w-20 rounded-full object-cover ${activePet.is_deceased ? 'opacity-80' : ''}`}
-                />
+                <>
+                  <img
+                    src={activePet.photo_url}
+                    alt={`Photo of ${activePet.pet_name}`}
+                    className={`h-20 w-20 rounded-full object-cover ${activePet.is_deceased ? 'opacity-80' : ''}`}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
+                    }}
+                  />
+                  <PawPrint className="h-9 w-9 text-primary hidden" />
+                </>
               ) : (
                 <PawPrint className="h-9 w-9 text-primary" />
               )}

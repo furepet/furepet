@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, PawPrint } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +14,27 @@ interface PetSwitcherProps {
   onSelectPet: (id: string) => void;
   onAddPet: () => void;
 }
+
+const PetAvatar = ({ pet }: { pet: Pet }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (!pet.photo_url || failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-muted">
+        <PawPrint className="h-5 w-5 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={pet.photo_url}
+      alt={pet.pet_name}
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+};
 
 export const PetSwitcher = ({ pets, activePetId, onSelectPet, onAddPet }: PetSwitcherProps) => {
   if (pets.length <= 1) return null;
@@ -30,13 +52,7 @@ export const PetSwitcher = ({ pets, activePetId, onSelectPet, onAddPet }: PetSwi
               : "border-border opacity-60 hover:opacity-100"
           )}
         >
-          {pet.photo_url ? (
-            <img src={pet.photo_url} alt={pet.pet_name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted">
-              <PawPrint className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
+          <PetAvatar pet={pet} />
         </button>
       ))}
       <button
