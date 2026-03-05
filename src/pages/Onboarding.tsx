@@ -360,8 +360,9 @@ const Onboarding = () => {
           />
         ) : (
           <PremiumUpsell saving={saving} onChoosePremium={() => savePet(false).then(() => {
-            supabase.functions.invoke("create-checkout").then(({ data }) => {
-              if (data?.url) window.open(data.url, "_blank");
+            supabase.functions.invoke("create-checkout").then(({ data, error }) => {
+              if (error) { console.error("create-checkout error:", error); return; }
+              if (data?.url) window.location.href = data.url;
             });
           })} onChooseFree={() => savePet(false)} />
         )}
