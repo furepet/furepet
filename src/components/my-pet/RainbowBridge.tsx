@@ -67,8 +67,8 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
       toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" });
       return;
     }
-    if (photos.length >= 3) {
-      toast({ title: "Maximum 3 photos", description: "Remove a photo first.", variant: "destructive" });
+    if (photos.length >= 5) {
+      toast({ title: "Maximum 5 photos", description: "Remove a photo first.", variant: "destructive" });
       return;
     }
 
@@ -141,7 +141,10 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
 
       {/* Photo Gallery */}
       <div>
-        <Label className="text-sm font-semibold text-foreground mb-2 block">Photo Gallery</Label>
+        <div className="flex items-center justify-between mb-2">
+          <Label className="text-sm font-semibold text-foreground">Photo Gallery</Label>
+          <span className="text-xs text-muted-foreground">{photos.length}/5 photos</span>
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {photos.map((url, i) => (
             <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border">
@@ -154,7 +157,7 @@ export const RainbowBridge = ({ pet }: RainbowBridgeProps) => {
               </button>
             </div>
           ))}
-          {photos.length < 3 && (
+          {photos.length < 5 && (
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
