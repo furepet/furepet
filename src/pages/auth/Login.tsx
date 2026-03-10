@@ -59,6 +59,13 @@ const Login = () => {
           </Button>
         </form>
 
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+          <span className="relative bg-background px-2 text-xs text-muted-foreground">or</span>
+        </div>
+
+        <AppleSignInButton />
+
         <div className="space-y-2 text-center text-sm">
           <Link to="/auth/forgot-password" className="block text-primary hover:underline">Forgot Password?</Link>
           <p className="text-muted-foreground">
