@@ -44,6 +44,13 @@ const AuthLoadingScreen = () => (
   </div>
 );
 
+const OAuthCallback = () => {
+  const { session, loading } = useAuth();
+  if (!loading && session) return <Navigate to="/" replace />;
+  if (!loading && !session) return <Navigate to="/auth" replace />;
+  return <AuthLoadingScreen />;
+};
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
   if (loading) return <AuthLoadingScreen />;
