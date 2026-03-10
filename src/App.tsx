@@ -44,6 +44,13 @@ const AuthLoadingScreen = () => (
   </div>
 );
 
+const OAuthCallback = () => {
+  const { session, loading } = useAuth();
+  if (!loading && session) return <Navigate to="/" replace />;
+  if (!loading && !session) return <Navigate to="/auth" replace />;
+  return <AuthLoadingScreen />;
+};
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, onboardingCompleted } = useAuth();
   if (loading) return <AuthLoadingScreen />;
@@ -103,7 +110,7 @@ const AppRoutes = () => {
           <Route path="/more/privacy" element={<PrivacyPolicy />} />
         </Route>
 
-        <Route path="/~oauth" element={<AuthLoadingScreen />} />
+        <Route path="/~oauth" element={<OAuthCallback />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       </div>
