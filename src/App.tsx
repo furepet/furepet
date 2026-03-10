@@ -103,6 +103,7 @@ const AppRoutes = () => {
           <Route path="/more/privacy" element={<PrivacyPolicy />} />
         </Route>
 
+        <Route path="/~oauth" element={<AuthLoadingScreen />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       </div>
