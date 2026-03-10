@@ -105,6 +105,13 @@ const SignUp = () => {
           </Button>
         </form>
 
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+          <span className="relative bg-background px-2 text-xs text-muted-foreground">or</span>
+        </div>
+
+        <AppleSignInButton />
+
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link to="/auth/login" className="font-medium text-primary hover:underline">Log In</Link>
