@@ -30,9 +30,9 @@ const getProjectRef = () => {
 };
 
 const managementToken =
+  Deno.env.get("MGMT_API_ACCESS_TOKEN") ??
   Deno.env.get("SUPABASE_MANAGEMENT_API_ACCESS_TOKEN") ??
   Deno.env.get("SUPABASE_ACCESS_TOKEN") ??
-  Deno.env.get("LOVABLE_API_KEY") ??
   "";
 
 const fetchAuthConfig = async (projectRef: string) => {
