@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { PawPrint } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { ActivePetProvider } from "@/contexts/ActivePetContext";
 import SplashScreen from "./components/SplashScreen";
 import AppShell from "./components/AppShell";
@@ -46,9 +47,50 @@ const AuthLoadingScreen = () => (
 
 const OAuthCallback = () => {
   const { session, loading } = useAuth();
+  const [callbackProcessed, setCallbackProcessed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const consumeOAuthCallback = async () => {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const searchParams = new URLSearchParams(window.location.search);
+
+        const accessToken = hashParams.get("access_token") ?? searchParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token") ?? searchParams.get("refresh_token");
+        const code = searchParams.get("code");
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) console.error("OAuth callback setSession error:", error);
+        } else if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) console.error("OAuth callback exchangeCodeForSession error:", error);
+        }
+      } finally {
+        window.history.replaceState({}, document.title, "/~oauth");
+        if (active) {
+          setTimeout(() => {
+            if (active) setCallbackProcessed(true);
+          }, 150);
+        }
+      }
+    };
+
+    void consumeOAuthCallback();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   if (!loading && session) return <Navigate to="/" replace />;
-  if (!loading && !session) return <Navigate to="/auth" replace />;
-  return <AuthLoadingScreen />;
+  if (loading || !callbackProcessed) return <AuthLoadingScreen />;
+  return <Navigate to="/auth" replace />;
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
