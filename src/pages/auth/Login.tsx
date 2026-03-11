@@ -14,7 +14,7 @@ const AppleSignInButton = () => {
   const handleAppleSignIn = async () => {
     setLoading(true);
     const { error } = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/~oauth`,
     });
     setLoading(false);
     if (error) {
