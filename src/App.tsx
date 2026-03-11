@@ -50,9 +50,25 @@ const OAuthCallback = () => {
   const [callbackProcessed, setCallbackProcessed] = useState(false);
 
   useEffect(() => {
+    console.info("[OAuthCallback] auth state", {
+      loading,
+      hasSession: Boolean(session),
+      userId: session?.user?.id ?? null,
+    });
+  }, [loading, session]);
+
+  useEffect(() => {
     let active = true;
 
     const consumeOAuthCallback = async () => {
+      console.info("[OAuthCallback] entered", {
+        href: window.location.href,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+      });
+
       try {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const searchParams = new URLSearchParams(window.location.search);
@@ -61,16 +77,42 @@ const OAuthCallback = () => {
         const refreshToken = hashParams.get("refresh_token") ?? searchParams.get("refresh_token");
         const code = searchParams.get("code");
 
+        console.info("[OAuthCallback] parsed params", {
+          hasAccessToken: Boolean(accessToken),
+          hasRefreshToken: Boolean(refreshToken),
+          hasCode: Boolean(code),
+          queryKeys: [...searchParams.keys()],
+          hashKeys: [...hashParams.keys()],
+        });
+
         if (accessToken && refreshToken) {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          if (error) console.error("OAuth callback setSession error:", error);
+          if (error) {
+            console.error("[OAuthCallback] setSession error", error);
+          } else {
+            console.info("[OAuthCallback] setSession succeeded");
+          }
         } else if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) console.error("OAuth callback exchangeCodeForSession error:", error);
+          if (error) {
+            console.error("[OAuthCallback] exchangeCodeForSession error", error);
+          } else {
+            console.info("[OAuthCallback] exchangeCodeForSession succeeded");
+          }
+        } else {
+          console.warn("[OAuthCallback] no token/code present in callback URL");
         }
+
+        const { data: { session: callbackSession } } = await supabase.auth.getSession();
+        console.info("[OAuthCallback] post-callback session", {
+          established: Boolean(callbackSession),
+          userId: callbackSession?.user?.id ?? null,
+        });
+      } catch (error) {
+        console.error("[OAuthCallback] callback processing failed", error);
       } finally {
         window.history.replaceState({}, document.title, "/~oauth");
         if (active) {

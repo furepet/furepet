@@ -13,8 +13,14 @@ const AppleSignInButton = () => {
 
   const handleAppleSignIn = async () => {
     setLoading(true);
+    const redirectUri = `${window.location.origin}/~oauth`;
+    console.info("[AppleOAuth] starting login", {
+      currentUrl: window.location.href,
+      redirectUri,
+    });
+
     const { error } = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: `${window.location.origin}/~oauth`,
+      redirect_uri: redirectUri,
     });
     setLoading(false);
     if (error) {
