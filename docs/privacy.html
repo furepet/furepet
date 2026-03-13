@@ -1,75 +1,209 @@
-FurePET
-Privacy Policy
-Effective Date: March 13, 2026
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — FurePET</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FDFCFA;
+      --text: #1a1a1a;
+      --text-secondary: #5c5c5c;
+      --accent: #2E7D5B;
+      --accent-light: #E8F5EE;
+      --border: #e8e4df;
+      --card-bg: #FFFFFF;
+    }
 
-FurePET ("we," "us," or "our") is a mobile application operated by FurePET LLC. We built FurePET to help pet owners manage their pets' health information in one place. This Privacy Policy explains what information we collect, how we use it, and the choices you have.
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-The short version: We collect only what's needed to make the app work for you. We don't sell your data. We don't share your pet's health records with third parties for advertising. Your information stays yours.
-1. Information We Collect
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
 
-Account information: When you create an account, we collect your email address and display name. If you sign in with Apple, we receive the information you authorize Apple to share (which may include your email address or a private relay address).
+    header {
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
 
-Pet information: You may enter details about your pets, including name, breed, species, date of birth, weight, and medical records. This information is stored to provide the app's core functionality.
+    header .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
 
-Village contacts: You may add veterinarian and emergency contact information. This data is stored in your account and is not shared.
+    header .logo span {
+      color: var(--text);
+    }
 
-Medical documents: You may upload medical documents such as vaccination records and lab results. These files are stored securely in our cloud infrastructure.
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
 
-Subscription and payment data: If you subscribe to FurePET Premium, payment is processed by Apple (via in-app purchase) or Stripe (for web subscriptions). We do not store your credit card number. We receive confirmation of your subscription status to unlock premium features.
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
 
-Usage data: We may collect anonymous, aggregated usage data such as which features are accessed and general app performance metrics. This data cannot be used to identify you personally.
+    .effective-date {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 2.5rem;
+    }
 
-2. How We Use Your Information
+    .intro {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
 
-We use the information we collect to:
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      color: var(--text);
+    }
 
-Provide, maintain, and improve the FurePET app
-Store and display your pet health records
-Process your subscription and manage premium access
-Send transactional emails related to your account (e.g., password resets)
-Diagnose technical problems and improve app stability
-3. How We Store and Protect Your Data
+    p {
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
 
-Your data is stored using Supabase, a cloud database platform with enterprise-grade security including encryption at rest and in transit, row-level security policies, and secure authentication. We follow industry-standard practices to protect your information from unauthorized access, alteration, or destruction.
+    ul {
+      margin: 0.5rem 0 1rem 1.5rem;
+    }
 
-4. Third-Party Services
+    li {
+      margin-bottom: 0.4rem;
+    }
 
-FurePET integrates with the following third-party services:
+    .highlight-box {
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+      font-size: 0.95rem;
+    }
 
-Supabase — Database and authentication infrastructure
-Apple Sign-In — Authentication provider
-RevenueCat — Subscription management for in-app purchases
-Stripe — Web payment processing
-Each of these services has its own privacy policy. We encourage you to review them. We do not sell or share your personal data with advertisers or data brokers.
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
 
-5. Data Retention
+    a:hover {
+      text-decoration: underline;
+    }
 
-We retain your account data and pet records for as long as your account is active. If you delete your account, we will delete your personal data and pet records from our systems within 30 days, except where we are required by law to retain it.
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
 
-6. Your Rights and Choices
+    @media (max-width: 600px) {
+      h1 { font-size: 1.7rem; }
+      main { padding: 2rem 1.25rem 3rem; }
+    }
+  </style>
+</head>
+<body>
 
-You have the right to:
+<header>
+  <div class="logo">Fure<span>PET</span></div>
+</header>
 
-Access the personal data we hold about you
-Correct inaccurate information in your account
-Delete your account and associated data
-Export your pet health records
-Opt out of non-essential communications
-To exercise any of these rights, contact us at privacy@furepet.com.
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="effective-date">Effective Date: March 13, 2026</p>
 
-7. Children's Privacy
+  <p class="intro">
+    FurePET ("we," "us," or "our") is a mobile application operated by FurePET LLC. We built FurePET to help pet owners manage their pets' health information in one place. This Privacy Policy explains what information we collect, how we use it, and the choices you have.
+  </p>
 
-FurePET is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If we learn that we have collected information from a child under 13, we will delete it promptly.
+  <div class="highlight-box">
+    <strong>The short version:</strong> We collect only what's needed to make the app work for you. We don't sell your data. We don't share your pet's health records with third parties for advertising. Your information stays yours.
+  </div>
 
-8. Changes to This Policy
+  <h2>1. Information We Collect</h2>
+  <p><strong>Account information:</strong> When you create an account, we collect your email address and display name. If you sign in with Apple, we receive the information you authorize Apple to share (which may include your email address or a private relay address).</p>
+  <p><strong>Pet information:</strong> You may enter details about your pets, including name, breed, species, date of birth, weight, and medical records. This information is stored to provide the app's core functionality.</p>
+  <p><strong>Village contacts:</strong> You may add veterinarian and emergency contact information. This data is stored in your account and is not shared.</p>
+  <p><strong>Medical documents:</strong> You may upload medical documents such as vaccination records and lab results. These files are stored securely in our cloud infrastructure.</p>
+  <p><strong>Subscription and payment data:</strong> If you subscribe to FurePET Premium, payment is processed by Apple (via in-app purchase) or Stripe (for web subscriptions). We do not store your credit card number. We receive confirmation of your subscription status to unlock premium features.</p>
+  <p><strong>Usage data:</strong> We may collect anonymous, aggregated usage data such as which features are accessed and general app performance metrics. This data cannot be used to identify you personally.</p>
 
-We may update this Privacy Policy from time to time. If we make material changes, we will notify you through the app or by email. Your continued use of FurePET after changes are posted constitutes acceptance of the updated policy.
+  <h2>2. How We Use Your Information</h2>
+  <p>We use the information we collect to:</p>
+  <ul>
+    <li>Provide, maintain, and improve the FurePET app</li>
+    <li>Store and display your pet health records</li>
+    <li>Process your subscription and manage premium access</li>
+    <li>Send transactional emails related to your account (e.g., password resets)</li>
+    <li>Diagnose technical problems and improve app stability</li>
+  </ul>
 
-9. Contact Us
+  <h2>3. How We Store and Protect Your Data</h2>
+  <p>Your data is stored using Supabase, a cloud database platform with enterprise-grade security including encryption at rest and in transit, row-level security policies, and secure authentication. We follow industry-standard practices to protect your information from unauthorized access, alteration, or destruction.</p>
 
-If you have questions or concerns about this Privacy Policy or your data, please contact us:
+  <h2>4. Third-Party Services</h2>
+  <p>FurePET integrates with the following third-party services:</p>
+  <ul>
+    <li><strong>Supabase</strong> — Database and authentication infrastructure</li>
+    <li><strong>Apple Sign-In</strong> — Authentication provider</li>
+    <li><strong>RevenueCat</strong> — Subscription management for in-app purchases</li>
+    <li><strong>Stripe</strong> — Web payment processing</li>
+  </ul>
+  <p>Each of these services has its own privacy policy. We encourage you to review them. We do not sell or share your personal data with advertisers or data brokers.</p>
 
-FurePET LLC
-Email: privacy@furepet.com
+  <h2>5. Data Retention</h2>
+  <p>We retain your account data and pet records for as long as your account is active. If you delete your account, we will delete your personal data and pet records from our systems within 30 days, except where we are required by law to retain it.</p>
 
-© 2026 FurePET LLC. All rights reserved.
+  <h2>6. Your Rights and Choices</h2>
+  <p>You have the right to:</p>
+  <ul>
+    <li>Access the personal data we hold about you</li>
+    <li>Correct inaccurate information in your account</li>
+    <li>Delete your account and associated data</li>
+    <li>Export your pet health records</li>
+    <li>Opt out of non-essential communications</li>
+  </ul>
+  <p>To exercise any of these rights, contact us at <a href="mailto:privacy@furepet.com">privacy@furepet.com</a>.</p>
+
+  <h2>7. Children's Privacy</h2>
+  <p>FurePET is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If we learn that we have collected information from a child under 13, we will delete it promptly.</p>
+
+  <h2>8. Changes to This Policy</h2>
+  <p>We may update this Privacy Policy from time to time. If we make material changes, we will notify you through the app or by email. Your continued use of FurePET after changes are posted constitutes acceptance of the updated policy.</p>
+
+  <h2>9. Contact Us</h2>
+  <p>If you have questions or concerns about this Privacy Policy or your data, please contact us:</p>
+  <p>
+    FurePET LLC<br>
+    Email: <a href="mailto:privacy@furepet.com">privacy@furepet.com</a>
+  </p>
+</main>
+
+<footer>
+  &copy; 2026 FurePET LLC. All rights reserved.
+</footer>
+
+</body>
+</html>
