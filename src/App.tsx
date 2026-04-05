@@ -106,7 +106,9 @@ const OAuthCallback = () => {
           console.warn("[OAuthCallback] no token/code present in callback URL");
         }
 
-        const { data: { session: callbackSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: callbackSession },
+        } = await supabase.auth.getSession();
         console.info("[OAuthCallback] post-callback session", {
           established: Boolean(callbackSession),
           userId: callbackSession?.user?.id ?? null,
@@ -168,35 +170,71 @@ const AppRoutes = () => {
     <>
       {!splashDone && <SplashScreen onFinish={() => setSplashDone(true)} />}
       <div style={{ display: splashDone ? undefined : "none" }}>
-      <Routes>
-        {/* Auth routes */}
-        <Route path="/auth" element={<AuthRoute><Login /></AuthRoute>} />
-        <Route path="/auth/signup" element={<AuthRoute><SignUp /></AuthRoute>} />
-        <Route path="/auth/login" element={<Navigate to="/auth" replace />} />
-        <Route path="/auth/verify" element={<VerifyEmail />} />
-        <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/onboarding" element={<OnboardingRoute><Onboarding /></OnboardingRoute>} />
+        <Routes>
+          {/* Auth routes */}
+          <Route
+            path="/auth"
+            element={
+              <AuthRoute>
+                <Login />
+              </AuthRoute>
+            }
+          />
+          <Route
+            path="/auth/signup"
+            element={
+              <AuthRoute>
+                <SignUp />
+              </AuthRoute>
+            }
+          />
+          <Route path="/auth/login" element={<Navigate to="/auth" replace />} />
+          <Route path="/auth/verify" element={<VerifyEmail />} />
+          <Route
+            path="/auth/forgot-password"
+            element={
+              <AuthRoute>
+                <ForgotPassword />
+              </AuthRoute>
+            }
+          />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route
+            path="/onboarding"
+            element={
+              <OnboardingRoute>
+                <Onboarding />
+              </OnboardingRoute>
+            }
+          />
 
-        {/* Protected app routes */}
-        <Route element={<ProtectedRoute><ActivePetProvider><AppShell /></ActivePetProvider></ProtectedRoute>}>
-          <Route path="/" element={<Index />} />
-          <Route path="/my-pet" element={<MyPet />} />
-          <Route path="/village" element={<Village />} />
-          <Route path="/medical" element={<Medical />} />
-          <Route path="/more" element={<More />} />
-          <Route path="/more/first-aid" element={<FirstAid />} />
-          <Route path="/more/ai-chat" element={<AiChat />} />
-          <Route path="/more/notifications" element={<NotificationSettings />} />
-          <Route path="/more/settings" element={<Settings />} />
-          <Route path="/more/help" element={<HelpFaq />} />
-          <Route path="/more/terms" element={<TermsOfService />} />
-          <Route path="/more/privacy" element={<PrivacyPolicy />} />
-        </Route>
+          {/* Protected app routes */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <ActivePetProvider>
+                  <AppShell />
+                </ActivePetProvider>
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<Index />} />
+            <Route path="/my-pet" element={<MyPet />} />
+            <Route path="/village" element={<Village />} />
+            <Route path="/medical" element={<Medical />} />
+            <Route path="/more" element={<More />} />
+            <Route path="/more/first-aid" element={<FirstAid />} />
+            <Route path="/more/ai-chat" element={<AiChat />} />
+            <Route path="/more/notifications" element={<NotificationSettings />} />
+            <Route path="/more/settings" element={<Settings />} />
+            <Route path="/more/help" element={<HelpFaq />} />
+            <Route path="/more/terms" element={<TermsOfService />} />
+            <Route path="/more/privacy" element={<PrivacyPolicy />} />
+          </Route>
 
-        <Route path="/~oauth" element={<OAuthCallback />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route path="/~oauth" element={<OAuthCallback />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </div>
     </>
   );
@@ -207,11 +245,11 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <HashRouter>
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>
-      </BrowserRouter>
+      </HashRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
