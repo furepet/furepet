@@ -9,14 +9,10 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
-  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-
-const LOGO_URL = 'https://sxzrzkgodbounjvrjcuj.supabase.co/storage/v1/object/public/email-assets/furepet-logo.png'
 
 const BRAND_NAME = 'FurēPET'
 
@@ -40,9 +36,6 @@ export const SignupEmail = ({
     <Preview>Confirm your email for {BRAND_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={logoSection}>
-          <Img src={LOGO_URL} width="64" height="64" alt={BRAND_NAME} style={logo} />
-        </Section>
         <Heading style={h1}>Welcome to {BRAND_NAME}</Heading>
         <Text style={text}>
           Thanks for signing up for{' '}
