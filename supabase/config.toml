@@ -1,31 +1,25 @@
 project_id = "sxzrzkgodbounjvrjcuj"
 
-[functions.analyze-medical-doc]
-verify_jwt = false
-
-[functions.pet-chat]
-verify_jwt = false
-
-[functions.check-notifications]
-verify_jwt = false
-
-[functions.complete-onboarding]
-verify_jwt = false
-
-[functions.save-onboarding]
-verify_jwt = false
-
-[functions.save-data]
-verify_jwt = false
-
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.check-subscription]
-verify_jwt = false
-
-[functions.customer-portal]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.analyze-medical-doc]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.check-notifications]
+    verify_jwt = false
+  [functions.check-subscription]
+    verify_jwt = false
+  [functions.complete-onboarding]
+    verify_jwt = false
+  [functions.create-checkout]
+    verify_jwt = false
+  [functions.customer-portal]
+    verify_jwt = false
+  [functions.pet-chat]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.save-data]
+    verify_jwt = false
+  [functions.save-onboarding]
+    verify_jwt = false
