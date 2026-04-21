@@ -9,9 +9,13 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+const LOGO_URL = 'https://sxzrzkgodbounjvrjcuj.supabase.co/storage/v1/object/public/email-assets/furepet-logo.png'
 
 const BRAND_NAME = 'FurēPET'
 
@@ -29,6 +33,9 @@ export const MagicLinkEmail = ({ confirmationUrl }: MagicLinkEmailProps) => (
     <Preview>Your login link for {BRAND_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <Section style={logoSection}>
+          <Img src={LOGO_URL} width="64" height="64" alt={BRAND_NAME} style={logo} />
+        </Section>
         <Heading style={h1}>Your login link</Heading>
         <Text style={text}>
           Tap the button below to log in to {BRAND_NAME}. This link will expire shortly.
@@ -48,6 +55,8 @@ export default MagicLinkEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif", colorScheme: 'light dark' as const }
 const container = { padding: '24px 28px', maxWidth: '560px' }
+const logoSection = { textAlign: 'center' as const, margin: '0 0 24px' }
+const logo = { display: 'block', margin: '0 auto', borderRadius: '12px' }
 const h1 = { fontSize: '24px', fontWeight: 600 as const, color: '#1a1a1a', margin: '0 0 20px' }
 const text = { fontSize: '15px', color: '#55575d', lineHeight: '1.6', margin: '0 0 20px' }
 const button = {
