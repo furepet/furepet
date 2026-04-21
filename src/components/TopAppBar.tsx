@@ -6,7 +6,10 @@ const TopAppBar = () => {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
+    <header
+      className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <PawPrint className="h-6 w-6 text-primary" aria-hidden="true" />

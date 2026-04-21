@@ -23,7 +23,10 @@ export const OfflineBanner = () => {
   if (isOnline) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-secondary px-4 py-2 text-center animate-slide-down">
+    <div
+      className="fixed top-0 left-0 right-0 z-50 bg-secondary px-4 py-2 text-center animate-slide-down"
+      style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+    >
       <div className="mx-auto flex max-w-lg items-center justify-center gap-2">
         <WifiOff className="h-4 w-4 text-secondary-foreground" />
         <span className="text-xs font-medium text-secondary-foreground">
