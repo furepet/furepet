@@ -7,17 +7,28 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "@/hooks/use-toast";
+import { isNativePlatform, signInWithAppleNative } from "@/lib/appleSignIn";
 
-const AppleSignInButton = () => {
+const AppleSignInButton = ({ onSuccess }: { onSuccess: () => void }) => {
   const [loading, setLoading] = useState(false);
 
   const handleAppleSignIn = async () => {
     setLoading(true);
+
+    if (isNativePlatform()) {
+      console.info("[AppleOAuth] native iOS signup path");
+      const { error } = await signInWithAppleNative();
+      setLoading(false);
+      if (error) {
+        toast({ title: "Apple Sign-In failed", description: error.message, variant: "destructive" });
+      } else {
+        onSuccess();
+      }
+      return;
+    }
+
     const redirectUri = `${window.location.origin}/~oauth`;
-    console.info("[AppleOAuth] starting signup", {
-      currentUrl: window.location.href,
-      redirectUri,
-    });
+    console.info("[AppleOAuth] web signup path", { currentUrl: window.location.href, redirectUri });
 
     const { error } = await lovable.auth.signInWithOAuth("apple", {
       redirect_uri: redirectUri,
@@ -146,7 +157,7 @@ const SignUp = () => {
           <span className="relative bg-background px-2 text-xs text-muted-foreground">or</span>
         </div>
 
-        <AppleSignInButton />
+        <AppleSignInButton onSuccess={() => navigate("/")} />
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
