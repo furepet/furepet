@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PawPrint, TrendingUp, Lock, Rainbow } from "lucide-react";
 import { useActivePet } from "@/contexts/ActivePetContext";
 import { PetBasics } from "@/components/my-pet/PetBasics";
@@ -10,8 +11,24 @@ type SubTab = "basics" | "trends" | "memorial";
 
 const MyPet = () => {
   const [activeTab, setActiveTab] = useState<SubTab>("basics");
-  const { activePet, isLoading, isPremium } = useActivePet();
+  const { activePet, isLoading, isPremium, pets, setActivePetId } = useActivePet();
   const [lockSheetOpen, setLockSheetOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Honor ?petId=... — switch active pet to the requested pet (incl. memorial pets).
+  useEffect(() => {
+    const requestedId = searchParams.get("petId");
+    if (!requestedId) return;
+    const match = pets.find((p) => p.id === requestedId);
+    if (match && match.id !== activePet?.id) {
+      setActivePetId(match.id);
+    }
+    if (match?.is_deceased) {
+      setActiveTab("basics");
+    }
+    searchParams.delete("petId");
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, pets, activePet?.id, setActivePetId, setSearchParams]);
 
   const isDeceased = activePet?.is_deceased ?? false;
 

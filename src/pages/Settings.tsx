@@ -340,7 +340,7 @@ const Settings = () => {
           <div key={pet.id}>
             {i > 0 && <Separator />}
             <button
-              onClick={() => navigate("/my-pet")}
+              onClick={() => navigate(`/my-pet?petId=${pet.id}`)}
               className="flex w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-accent transition-colors"
             >
               <div className="relative h-10 w-10 shrink-0 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
