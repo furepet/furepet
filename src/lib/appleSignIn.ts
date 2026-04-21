@@ -88,18 +88,44 @@ export const signInWithAppleNative = async (): Promise<NativeAppleResult> => {
 
     log("session created", { userId: data?.user?.id });
 
-    // Apple only sends name/email on FIRST sign-in. Fallback to email-derived name.
-    const givenName = result?.response?.givenName?.trim();
-    const familyName = result?.response?.familyName?.trim();
+    // Apple sends name only on FIRST sign-in. Email may be a private relay address.
+    const givenName = result?.response?.givenName?.trim() || "";
+    const familyName = result?.response?.familyName?.trim() || "";
     const email = result?.response?.email ?? data?.user?.email ?? undefined;
+    const isPrivateRelay = (e?: string) => Boolean(e && e.toLowerCase().endsWith("@privaterelay.appleid.com"));
 
-    let firstName = givenName || "";
-    if (!firstName && email) {
-      firstName = email.split("@")[0] || "";
+    // Existing first_name from user_metadata (preserved across sign-ins)
+    const existingFirstName = (data?.user?.user_metadata as Record<string, any> | undefined)?.first_name?.toString().trim() || "";
+
+    // Priority:
+    // 1. Apple-provided given name (first sign-in)
+    // 2. Apple-provided family name (first sign-in, if no given name)
+    // 3. Existing stored first_name (subsequent sign-ins)
+    // 4. Email prefix — ONLY if it's a real email, never a private relay
+    // 5. Generic fallback "Pet parent"
+    let firstName = givenName || familyName || existingFirstName;
+    if (!firstName) {
+      if (email && !isPrivateRelay(email)) {
+        firstName = email.split("@")[0] || "";
+      }
+    }
+    if (!firstName) {
+      firstName = "Pet parent";
     }
 
-    // Persist first_name to user_metadata so AuthContext picks it up.
-    if (firstName && data?.user) {
+    log("resolved firstName", {
+      source: givenName ? "apple-given" : familyName ? "apple-family" : existingFirstName ? "existing-metadata" : (email && !isPrivateRelay(email)) ? "email-prefix" : "fallback",
+      isPrivateRelay: isPrivateRelay(email),
+    });
+
+    // Only update user_metadata if we have a meaningful new value AND it differs from what's stored.
+    const shouldUpdateMetadata =
+      data?.user &&
+      firstName &&
+      firstName !== "Pet parent" &&
+      firstName !== existingFirstName;
+
+    if (shouldUpdateMetadata) {
       try {
         await supabase.auth.updateUser({
           data: {
@@ -107,10 +133,12 @@ export const signInWithAppleNative = async (): Promise<NativeAppleResult> => {
             ...(familyName ? { last_name: familyName } : {}),
           },
         });
-        log("user_metadata updated with first_name");
+        log("user_metadata updated with first_name", { firstName });
       } catch (metaErr) {
         errLog("failed to update user_metadata", metaErr);
       }
+    } else {
+      log("skipped metadata update", { existingFirstName, firstName });
     }
 
     return { firstName, email };
