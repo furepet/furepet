@@ -66,8 +66,6 @@ export default SignupEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif", colorScheme: 'light dark' as const }
 const container = { padding: '24px 28px', maxWidth: '560px' }
-const logoSection = { textAlign: 'center' as const, margin: '0 0 24px' }
-const logo = { display: 'block', margin: '0 auto', borderRadius: '12px' }
 const h1 = { fontSize: '24px', fontWeight: 600 as const, color: '#1a1a1a', margin: '0 0 20px' }
 const text = { fontSize: '15px', color: '#55575d', lineHeight: '1.6', margin: '0 0 20px' }
 const link = { color: '#2E7D32', textDecoration: 'underline' }
