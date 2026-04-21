@@ -138,20 +138,45 @@ const Settings = () => {
   }, [user]);
 
   const handleSaveName = async () => {
-    if (!user || !newName.trim()) return;
+    const trimmed = newName.trim();
+    if (!user) return;
+    if (!trimmed) {
+      toast({ title: "Name required", description: "Please enter your first name.", variant: "destructive" });
+      return;
+    }
+    if (trimmed === firstName) {
+      setEditNameOpen(false);
+      return;
+    }
     setSavingName(true);
     try {
-      await saveData({
-        table: "profiles",
-        action: "update",
-        data: { first_name: newName.trim() },
-        filters: { user_id: user.id },
-      });
-      toast({ title: "Name updated" });
+      // 1. Update auth user_metadata — this is what the Home greeting reads from
+      const { error: authErr } = await supabase.auth.updateUser({ data: { first_name: trimmed } });
+      if (authErr) throw authErr;
+
+      // 2. Mirror to profiles table (best-effort, non-blocking for UX)
+      try {
+        await saveData({
+          table: "profiles",
+          action: "update",
+          data: { first_name: trimmed },
+          filters: { user_id: user.id },
+        });
+      } catch (profileErr) {
+        console.warn("Profile mirror update failed (non-fatal):", profileErr);
+      }
+
+      toast({ title: "Name updated", description: `Saved as "${trimmed}".` });
       setEditNameOpen(false);
-      window.location.reload();
+      // Reload so AuthContext picks up the refreshed user_metadata everywhere
+      setTimeout(() => window.location.reload(), 400);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      console.error("Save name failed:", err);
+      toast({
+        title: "Couldn't save name",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSavingName(false);
     }
