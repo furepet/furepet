@@ -492,16 +492,30 @@ const Onboarding = () => {
               }
 
               completeOnboarding();
-
-              // Now redirect to Stripe checkout
-              const { data, error } = await supabase.functions.invoke("create-checkout");
-              if (error) throw error;
-              if (data?.url) {
-                window.location.href = data.url;
-              } else {
-                // Fallback: go to home if no checkout URL
+              
+              const { isIOS } = await import("@/utils/platform");
+              if (isIOS()) {
+                const { RevenueCatService } = await import("@/services/RevenueCatService");
+                try {
+                  await RevenueCatService.presentPaywall();
+                } catch (rcErr: any) {
+                  toast({
+                    title: "Subscription Error",
+                    description: rcErr.message || "Could not show the paywall.",
+                    variant: "destructive"
+                  });
+                }
                 window.location.href = "/";
+              } else {
+                const { data, error } = await supabase.functions.invoke("create-checkout");
+                if (error) throw error;
+                if (data?.url) {
+                  window.location.href = data.url;
+                } else {
+                  window.location.href = "/";
+                }
               }
+
             } catch (err) {
               console.error("Premium checkout error:", err);
               toast({

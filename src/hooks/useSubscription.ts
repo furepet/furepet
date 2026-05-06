@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isIOS } from "@/utils/platform";
+import { RevenueCatService } from "@/services/RevenueCatService";
 
 interface SubscriptionState {
   subscribed: boolean;
@@ -23,11 +25,26 @@ export const useSubscription = () => {
     }
 
     try {
+      // Check Stripe via Supabase
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
+      
+      let isSubscribed = data?.subscribed ?? false;
+      let end = data?.subscription_end ?? null;
+
+      // If on iOS, also check RevenueCat
+      if (isIOS()) {
+        const rcSubscribed = await RevenueCatService.checkSubscription();
+        if (rcSubscribed) {
+          isSubscribed = true;
+          // Note: end date might not be easily available from rc checkSubscription currently
+          // but if they are subscribed we trust it
+        }
+      }
+
       setState({
-        subscribed: data?.subscribed ?? false,
-        subscriptionEnd: data?.subscription_end ?? null,
+        subscribed: isSubscribed,
+        subscriptionEnd: end,
         loading: false,
       });
     } catch (err) {
@@ -44,11 +61,24 @@ export const useSubscription = () => {
   }, [checkSubscription]);
 
   const startCheckout = async () => {
-    const { data, error } = await supabase.functions.invoke("create-checkout");
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-    if (data?.url) window.location.href = data.url;
-    else throw new Error("No checkout URL returned");
+    try {
+      if (isIOS()) {
+        const success = await RevenueCatService.presentPaywall();
+        if (success) {
+          await checkSubscription();
+        }
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("create-checkout");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.url) window.location.href = data.url;
+      else throw new Error("No checkout URL returned");
+    } catch (err: any) {
+      console.error("startCheckout error:", err);
+      throw err;
+    }
   };
 
   const openPortal = async () => {

@@ -126,6 +126,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session.user);
         await fetchProfile(session.user.id, session.access_token, session.user.user_metadata);
+        
+        // Initialize RevenueCat for iOS
+        const { RevenueCatService } = await import("@/services/RevenueCatService");
+        RevenueCatService.initialize(session.user.id);
+
         if (mounted) markResolved();
         return;
       }
@@ -142,6 +147,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(recovered);
         setUser(recovered.user);
         await fetchProfile(recovered.user.id, recovered.access_token, recovered.user.user_metadata);
+
+        // Initialize RevenueCat for iOS
+        const { RevenueCatService } = await import("@/services/RevenueCatService");
+        RevenueCatService.initialize(recovered.user.id);
+
         if (mounted) markResolved();
       } else {
         // No session anywhere — unblock UI so it redirects to /auth
@@ -160,6 +170,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (newSession?.user) {
           await fetchProfile(newSession.user.id, newSession.access_token, newSession.user.user_metadata);
+          // Initialize RevenueCat for iOS
+          const { RevenueCatService } = await import("@/services/RevenueCatService");
+          RevenueCatService.initialize(newSession.user.id);
         } else {
           setFirstName("");
           setOnboardingCompleted(false);

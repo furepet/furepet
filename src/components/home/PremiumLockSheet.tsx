@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useToast } from "@/hooks/use-toast";
+import { isIOS } from "@/utils/platform";
 
 const premiumFeatures = [
   "Medical records & document uploads",
@@ -37,11 +38,24 @@ export const PremiumLockSheet = ({ open, onOpenChange }: PremiumLockSheetProps) 
       await startCheckout();
       onOpenChange(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Could not start checkout", variant: "destructive" });
+      toast({ 
+        title: "Subscription Error", 
+        description: err.message || "Could not start subscription process", 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (open && isIOS()) {
+      onOpenChange(false);
+      handleStart();
+    }
+  }, [open, onOpenChange]);
+
+  if (isIOS()) return null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
