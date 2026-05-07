@@ -13,7 +13,7 @@
     {
       "identity" : "purchases-hybrid-common",
       "kind" : "remoteSourceControl",
-      "location" : "git@github.com:RevenueCat/purchases-hybrid-common.git",
+      "location" : "https://github.com/RevenueCat/purchases-hybrid-common.git",
       "state" : {
         "revision" : "643a7a3ca21a37470beb07143223207c2243c545",
         "version" : "18.4.0"
